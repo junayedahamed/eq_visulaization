@@ -3,7 +3,9 @@ import 'package:eq_visulaization/eq_visulaization.dart';
 
 void main() {
   test('EquationPainterWidget can be instantiated', () {
-    final widget = EquationPainterWidget(function: (x, y) => x + y);
-    expect(widget.function, isNotNull);
+    final widget = EquationPainterWidget(
+      equations: [EquationConfig(function: (x, y) => x + y)],
+    );
+    expect(widget.equations.length, 1);
   });
 }

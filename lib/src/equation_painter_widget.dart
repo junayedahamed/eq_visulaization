@@ -2,13 +2,43 @@ import 'package:flutter/material.dart';
 
 typedef MathFunction = double Function(double x, double y);
 
-/// A widget that draws a mathematical function on a coordinate system with animation.
-class EquationPainterWidget extends StatefulWidget {
+/// Defines how the equation is revealed during animation.
+enum AnimationType {
+  /// Revealed from the center outwards.
+  radial,
+
+  /// Revealed point-by-point following the curve's path (hand-drawn effect).
+  sequential,
+
+  /// Revealed from left to right.
+  linearX,
+
+  /// Revealed from top to bottom.
+  linearY,
+}
+
+/// Configuration for a single mathematical equation in the plot.
+class EquationConfig {
   final MathFunction function;
+  final Color color;
+  final double strokeWidth;
+
+  /// Optional override for the animation type. If null, the widget's default is used.
+  final AnimationType? animationType;
+
+  const EquationConfig({
+    required this.function,
+    this.color = Colors.blue,
+    this.strokeWidth = 2.0,
+    this.animationType,
+  });
+}
+
+/// A widget that draws multiple mathematical functions on a coordinate system with animation.
+class EquationPainterWidget extends StatefulWidget {
+  final List<EquationConfig> equations;
   final double width;
   final double height;
-  final Color graphLineColor;
-  final double graphLineStrokeWidth;
   final bool showGrid;
   final bool showAxis;
   final Color gridColor;
@@ -16,19 +46,26 @@ class EquationPainterWidget extends StatefulWidget {
   final bool animate;
   final Duration animationDuration;
 
+  /// The style of animation used to reveal the graph.
+  final AnimationType animationType;
+
+  /// Where the origin (0,0) is located on the canvas.
+  /// Defaults to [Alignment.center].
+  final Alignment alignment;
+
   const EquationPainterWidget({
     super.key,
-    required this.function,
+    required this.equations,
     this.width = 300,
     this.height = 300,
-    this.graphLineColor = Colors.blue,
-    this.graphLineStrokeWidth = 2.0,
     this.showGrid = true,
     this.showAxis = true,
     this.gridColor = const Color(0xFFE0E0E0),
     this.gridStrokeWidth = 1.0,
     this.animate = true,
-    this.animationDuration = const Duration(milliseconds: 800),
+    this.animationDuration = const Duration(milliseconds: 1500),
+    this.animationType = AnimationType.radial,
+    this.alignment = Alignment.center,
   });
 
   @override
@@ -38,7 +75,7 @@ class EquationPainterWidget extends StatefulWidget {
 class _EquationPainterWidgetState extends State<EquationPainterWidget>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  List<_LineSegment>? _segments;
+  List<List<_LineSegment>>? _allSegments;
 
   @override
   void initState() {
@@ -52,16 +89,36 @@ class _EquationPainterWidgetState extends State<EquationPainterWidget>
     } else {
       _controller.value = 1.0;
     }
-    _calculateSegments();
+    _calculateAllSegments();
   }
 
   @override
   void didUpdateWidget(EquationPainterWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.function != widget.function ||
+    // Check if any significant property changed
+    bool needsRecalc =
         oldWidget.width != widget.width ||
-        oldWidget.height != widget.height) {
-      _calculateSegments();
+        oldWidget.height != widget.height ||
+        oldWidget.animationType != widget.animationType ||
+        oldWidget.alignment != widget.alignment ||
+        oldWidget.equations.length != widget.equations.length;
+
+    if (!needsRecalc) {
+      for (int i = 0; i < widget.equations.length; i++) {
+        if (oldWidget.equations[i].function != widget.equations[i].function ||
+            oldWidget.equations[i].color != widget.equations[i].color ||
+            oldWidget.equations[i].strokeWidth !=
+                widget.equations[i].strokeWidth ||
+            oldWidget.equations[i].animationType !=
+                widget.equations[i].animationType) {
+          needsRecalc = true;
+          break;
+        }
+      }
+    }
+
+    if (needsRecalc) {
+      _calculateAllSegments();
       if (widget.animate) {
         _controller.reset();
         _controller.forward();
@@ -69,25 +126,39 @@ class _EquationPainterWidgetState extends State<EquationPainterWidget>
     }
   }
 
-  void _calculateSegments() {
+  void _calculateAllSegments() {
+    final all = <List<_LineSegment>>[];
+    for (final eq in widget.equations) {
+      all.add(_calculateSegmentsFor(eq));
+    }
+    _allSegments = all;
+  }
+
+  List<_LineSegment> _calculateSegmentsFor(EquationConfig config) {
     final w = widget.width;
     final h = widget.height;
     const steps = 2.0;
-    final start = Offset(-w / 2, h / 2);
-    final end = Offset(w / 2, -h / 2);
-    final segments = <_LineSegment>[];
 
-    for (double y = start.dy; y >= end.dy; y -= steps) {
-      for (double x = start.dx; x <= end.dx; x += steps) {
+    // Optimize: only scan the mathematical range that is actually visible
+    // based on the chosen alignment.
+    final minX = -(1 + widget.alignment.x) * w / 2;
+    final maxX = minX + w;
+    final minY = (1 + widget.alignment.y) * h / 2 - h;
+    final maxY = minY + h;
+
+    final rawSegments = <_LineSegment>[];
+
+    for (double y = maxY; y >= minY; y -= steps) {
+      for (double x = minX; x <= maxX; x += steps) {
         final tl = Offset(x, y);
         final tr = Offset(x + steps, y);
         final bl = Offset(x, y - steps);
         final br = Offset(x + steps, y - steps);
 
-        final tlVal = widget.function(tl.dx, tl.dy);
-        final trVal = widget.function(tr.dx, tr.dy);
-        final blVal = widget.function(bl.dx, bl.dy);
-        final brVal = widget.function(br.dx, br.dy);
+        final tlVal = config.function(tl.dx, tl.dy);
+        final trVal = config.function(tr.dx, tr.dy);
+        final blVal = config.function(bl.dx, bl.dy);
+        final brVal = config.function(br.dx, br.dy);
 
         final points = <Offset>[];
 
@@ -107,17 +178,86 @@ class _EquationPainterWidgetState extends State<EquationPainterWidget>
         check(bl, blVal, tl, tlVal);
 
         if (points.length >= 2) {
-          // Normalize distance for animation (radial sweep)
-          final midX = (points[0].dx + points[1].dx) / 2;
-          final midY = (points[0].dy + points[1].dy) / 2;
-          final dist = Offset(midX, midY).distance;
-          segments.add(_LineSegment(points[0], points[1], dist));
+          double dist = 0;
+          final animType = config.animationType ?? widget.animationType;
+          switch (animType) {
+            case AnimationType.radial:
+              dist =
+                  ((points[0].dx + points[1].dx) / 2).abs() +
+                  ((points[0].dy + points[1].dy) / 2).abs();
+              break;
+            case AnimationType.linearX:
+              dist = (points[0].dx + points[1].dx) / 2;
+              break;
+            case AnimationType.linearY:
+              dist = -((points[0].dy + points[1].dy) / 2);
+              break;
+            case AnimationType.sequential:
+              dist = 0;
+              break;
+          }
+          rawSegments.add(_LineSegment(points[0], points[1], dist));
         }
       }
     }
-    // We sort segments by distance from origin to create a radial "reveal" effect
-    segments.sort((a, b) => a.distance.compareTo(b.distance));
-    _segments = segments;
+
+    if (rawSegments.isEmpty) return [];
+
+    final animType = config.animationType ?? widget.animationType;
+    if (animType == AnimationType.sequential) {
+      return _sortSegmentsSequentially(rawSegments);
+    } else {
+      rawSegments.sort((a, b) => a.distance.compareTo(b.distance));
+      return rawSegments;
+    }
+  }
+
+  List<_LineSegment> _sortSegmentsSequentially(List<_LineSegment> segments) {
+    final sorted = <_LineSegment>[];
+    final unvisited = List<_LineSegment>.from(segments);
+
+    while (unvisited.isNotEmpty) {
+      var current = unvisited.removeAt(0);
+      sorted.add(current);
+
+      bool foundNext = true;
+      while (foundNext && unvisited.isNotEmpty) {
+        foundNext = false;
+        Offset lastPoint = current.p2;
+
+        int bestIdx = -1;
+        bool reversed = false;
+        double minFoundDist = 4.0; // Max search radius
+
+        for (int i = 0; i < unvisited.length; i++) {
+          final seg = unvisited[i];
+          double d1 = (seg.p1 - lastPoint).distanceSquared;
+          double d2 = (seg.p2 - lastPoint).distanceSquared;
+
+          if (d1 < minFoundDist) {
+            minFoundDist = d1;
+            bestIdx = i;
+            reversed = false;
+          } else if (d2 < minFoundDist) {
+            minFoundDist = d2;
+            bestIdx = i;
+            reversed = true;
+          }
+          if (minFoundDist < 0.01) break;
+        }
+
+        if (bestIdx != -1) {
+          var nextSeg = unvisited.removeAt(bestIdx);
+          if (reversed) {
+            nextSeg = _LineSegment(nextSeg.p2, nextSeg.p1, 0);
+          }
+          sorted.add(nextSeg);
+          current = nextSeg;
+          foundNext = true;
+        }
+      }
+    }
+    return sorted;
   }
 
   @override
@@ -145,6 +285,7 @@ class _EquationPainterWidgetState extends State<EquationPainterWidget>
                   showAxis: widget.showAxis,
                   gridColor: widget.gridColor,
                   gridStrokeWidth: widget.gridStrokeWidth,
+                  alignment: widget.alignment,
                 ),
               ),
             ),
@@ -156,10 +297,10 @@ class _EquationPainterWidgetState extends State<EquationPainterWidget>
               return CustomPaint(
                 size: Size(widget.width, widget.height),
                 painter: _GraphPainter(
-                  segments: _segments ?? [],
+                  allSegments: _allSegments ?? [],
+                  equations: widget.equations,
                   animationProgress: _controller.value,
-                  graphLineColor: widget.graphLineColor,
-                  graphLineStrokeWidth: widget.graphLineStrokeWidth,
+                  alignment: widget.alignment,
                 ),
               );
             },
@@ -183,12 +324,14 @@ class _BackgroundPainter extends CustomPainter {
   final bool showAxis;
   final Color gridColor;
   final double gridStrokeWidth;
+  final Alignment alignment;
 
   _BackgroundPainter({
     required this.showGrid,
     required this.showAxis,
     required this.gridColor,
     required this.gridStrokeWidth,
+    required this.alignment,
   });
 
   @override
@@ -197,24 +340,45 @@ class _BackgroundPainter extends CustomPainter {
     final h = size.height;
     final paint = Paint();
 
-    // 1. Draw Grid
+    // Origin position based on alignment
+    final originX = (1 + alignment.x) * w / 2;
+    final originY = (1 + alignment.y) * h / 2;
+
+    // 1. Draw Grid relative to origin
     if (showGrid) {
       paint.color = gridColor;
       paint.strokeWidth = gridStrokeWidth;
-      for (double x = 0; x <= w; x += 20) {
+
+      // Vertical lines spreading from origin
+      for (double x = originX; x <= w; x += 40) {
         canvas.drawLine(Offset(x, 0), Offset(x, h), paint);
       }
-      for (double y = 0; y <= h; y += 20) {
+      for (double x = originX - 40; x >= 0; x -= 40) {
+        canvas.drawLine(Offset(x, 0), Offset(x, h), paint);
+      }
+
+      // Horizontal lines spreading from origin
+      for (double y = originY; y <= h; y += 40) {
+        canvas.drawLine(Offset(0, y), Offset(w, y), paint);
+      }
+      for (double y = originY - 40; y >= 0; y -= 40) {
         canvas.drawLine(Offset(0, y), Offset(w, y), paint);
       }
     }
 
     // 2. Draw Axis
     if (showAxis) {
-      paint.color = Colors.black;
+      paint.color = Colors.black.withOpacity(0.5);
       paint.strokeWidth = 2.0;
-      canvas.drawLine(Offset(w / 2, 0), Offset(w / 2, h), paint);
-      canvas.drawLine(Offset(0, h / 2), Offset(w, h / 2), paint);
+
+      // X Axis
+      if (originY >= 0 && originY <= h) {
+        canvas.drawLine(Offset(0, originY), Offset(w, originY), paint);
+      }
+      // Y Axis
+      if (originX >= 0 && originX <= w) {
+        canvas.drawLine(Offset(originX, 0), Offset(originX, h), paint);
+      }
     }
   }
 
@@ -223,53 +387,72 @@ class _BackgroundPainter extends CustomPainter {
     return oldDelegate.showGrid != showGrid ||
         oldDelegate.showAxis != showAxis ||
         oldDelegate.gridColor != gridColor ||
-        oldDelegate.gridStrokeWidth != gridStrokeWidth;
+        oldDelegate.gridStrokeWidth != gridStrokeWidth ||
+        oldDelegate.alignment != alignment;
   }
 }
 
 /// Painter for the animated graph segments
 class _GraphPainter extends CustomPainter {
-  final List<_LineSegment> segments;
+  final List<List<_LineSegment>> allSegments;
+  final List<EquationConfig> equations;
   final double animationProgress;
-  final Color graphLineColor;
-  final double graphLineStrokeWidth;
+  final Alignment alignment;
 
   _GraphPainter({
-    required this.segments,
+    required this.allSegments,
+    required this.equations,
     required this.animationProgress,
-    required this.graphLineColor,
-    required this.graphLineStrokeWidth,
+    required this.alignment,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (segments.isEmpty) return;
+    if (allSegments.isEmpty) return;
 
     final w = size.width;
     final h = size.height;
 
-    // Coordinate mapping: center of canvas is (0,0)
-    Offset f2m(Offset c) => Offset(w / 2 + c.dx, -c.dy + h / 2);
+    // Shifted origin mapping
+    // c.dx is the mathematical x, c.dy is the mathematical y
+    // (1 + alignment.x) * w / 2 gives the canvas x-coordinate of the mathematical origin (0,0)
+    // (1 + alignment.y) * h / 2 gives the canvas y-coordinate of the mathematical origin (0,0)
+    Offset f2m(Offset c) => Offset(
+      (1 + alignment.x) * w / 2 + c.dx,
+      (1 + alignment.y) * h / 2 -
+          c.dy, // Invert y-axis for mathematical coordinates
+    );
 
-    final equationPaint = Paint()
-      ..color = graphLineColor
-      ..strokeWidth = graphLineStrokeWidth
+    final paint = Paint()
       ..style = PaintingStyle.stroke
       ..isAntiAlias = true
       ..strokeCap = StrokeCap.round;
 
-    final countToDraw = (segments.length * animationProgress).toInt();
-    for (int i = 0; i < countToDraw; i++) {
-      final segment = segments[i];
-      canvas.drawLine(f2m(segment.p1), f2m(segment.p2), equationPaint);
+    for (int i = 0; i < allSegments.length; i++) {
+      final segments = allSegments[i];
+      final config = equations[i];
+      paint.color = config.color;
+      paint.strokeWidth = config.strokeWidth;
+
+      final countToDraw = (segments.length * animationProgress).toInt();
+      for (int j = 0; j < countToDraw; j++) {
+        final segment = segments[j];
+        canvas.drawLine(f2m(segment.p1), f2m(segment.p2), paint);
+      }
     }
   }
 
   @override
   bool shouldRepaint(covariant _GraphPainter oldDelegate) {
+    // We need to check if the list of equations itself has changed,
+    // or if any properties within the equations have changed.
+    // For simplicity, we'll assume if allSegments changes, it implies equation changes.
+    // A more robust check would iterate through equations list.
     return oldDelegate.animationProgress != animationProgress ||
-        oldDelegate.segments != segments ||
-        oldDelegate.graphLineColor != graphLineColor ||
-        oldDelegate.graphLineStrokeWidth != graphLineStrokeWidth;
+        oldDelegate.allSegments !=
+            allSegments || // This implies segments or their order changed
+        oldDelegate.alignment != alignment ||
+        oldDelegate.equations !=
+            equations; // Check if the list of equations itself changed
   }
 }
