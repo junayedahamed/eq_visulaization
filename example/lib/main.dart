@@ -13,6 +13,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Equation Visualization Demo',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
         primarySwatch: Colors.blue,
@@ -23,6 +24,24 @@ class MyApp extends StatelessWidget {
   }
 }
 
+class EquationExample {
+  final String name;
+  final String formula;
+  final MathFunction function;
+  final Color color;
+  final AnimationType animationType;
+  final double unitsPerSquare;
+
+  EquationExample({
+    required this.name,
+    required this.formula,
+    required this.function,
+    required this.color,
+    this.animationType = AnimationType.radial,
+    this.unitsPerSquare = 50.0,
+  });
+}
+
 class EquationDemoPage extends StatefulWidget {
   const EquationDemoPage({super.key});
 
@@ -31,52 +50,109 @@ class EquationDemoPage extends StatefulWidget {
 }
 
 class _EquationDemoPageState extends State<EquationDemoPage> {
-  String _selectedEquation = 'Circle';
+  Alignment _alignment = Alignment.center;
+  late List<EquationExample> _examples;
+  late EquationExample _selectedExample;
 
-  double _circle(double x, double y) {
-    // x^2 + y^2 - r^2 = 0
-    return x * x + y * y - 100000;
-  }
-
-  double _heart(double x, double y) {
-    // (x^2 + y^2 - 1)^3 - x^2 * y^3 = 0
-    // Scaled for visualization
-    double xx = x / 40;
-    double yy = y / 40;
-    return pow(xx * xx + yy * yy - 1, 3) - xx * xx * pow(yy, 3);
-  }
-
-  double _sine(double x, double y) {
-    // y - sin(x) = 0
-    return y - 50 * sin(x / 20);
-  }
-
-  double _cross(double x, double y) {
-    return (x * x - 2500) * (y * y - 2500);
-  }
-
-  MathFunction get _currentFunction {
-    switch (_selectedEquation) {
-      case 'Circle':
-        return _circle;
-      case 'Heart':
-        return _heart;
-      case 'Sine Wave':
-        return _sine;
-      case 'Cross':
-        return _cross;
-      default:
-        return _circle;
-    }
+  @override
+  void initState() {
+    super.initState();
+    _examples = [
+      EquationExample(
+        name: 'Classical Sine Wave',
+        formula: 'y - 60 * sin(x / 30) = 0',
+        function: (x, y) => y - 60 * sin(x / 30),
+        color: Colors.cyanAccent,
+        animationType: AnimationType.linearX,
+        unitsPerSquare: 60,
+      ),
+      EquationExample(
+        name: 'Perfect Circle',
+        formula: 'x² + y² - 100² = 0',
+        function: (x, y) => x * x + y * y - 100 * 100,
+        color: Colors.amberAccent,
+        animationType: AnimationType.radial,
+        unitsPerSquare: 50,
+      ),
+      EquationExample(
+        name: 'Mathematical Heart',
+        formula: '(x²+y²-1)³ - x²y³ = 0',
+        function: (x, y) {
+          final nx = x / 80;
+          final ny = y / 80;
+          return pow(nx * nx + ny * ny - 1, 3) - (nx * nx * ny * ny * ny);
+        },
+        color: Colors.redAccent,
+        animationType: AnimationType.sequential,
+        unitsPerSquare: 40,
+      ),
+      EquationExample(
+        name: 'Folium of Descartes',
+        formula: 'x³ + y³ - 3axy = 0',
+        function: (x, y) {
+          const a = 100.0;
+          return x * x * x + y * y * y - 3 * a * x * y;
+        },
+        color: Colors.lightGreenAccent,
+        animationType: AnimationType.sequential,
+        unitsPerSquare: 80,
+      ),
+      EquationExample(
+        name: 'Complex Interference',
+        formula: 'tan(20x) - tan(15y) + sin(xy) + cos(y/x) + ...',
+        function: (x, y) =>
+            tan(20 * x) -
+            tan(15 * y) +
+            sin(x * y) +
+            cos(y / x) +
+            log(1 + x * x + y * y) +
+            (x * x * x - y * y * y) / (x * x + y * y) -
+            10,
+        color: Colors.pinkAccent,
+        animationType: AnimationType.linearX,
+        unitsPerSquare: 50,
+      ),
+    ];
+    _selectedExample = _examples[0];
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Equation Visualization'),
+        title: const Text('Equation Painter'),
         elevation: 0,
         backgroundColor: Colors.transparent,
+        centerTitle: true,
+        actions: [
+          PopupMenuButton<Alignment>(
+            tooltip: 'Change Origin Alignment',
+            icon: const Icon(Icons.grid_view_rounded),
+            onSelected: (val) => setState(() => _alignment = val),
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: Alignment.center,
+                child: Text('Center (All Quadrants)'),
+              ),
+              const PopupMenuItem(
+                value: Alignment.bottomLeft,
+                child: Text('1st Quadrant (Bottom Left)'),
+              ),
+              const PopupMenuItem(
+                value: Alignment.bottomRight,
+                child: Text('2nd Quadrant (Bottom Right)'),
+              ),
+              const PopupMenuItem(
+                value: Alignment.topRight,
+                child: Text('3rd Quadrant (Top Right)'),
+              ),
+              const PopupMenuItem(
+                value: Alignment.topLeft,
+                child: Text('4th Quadrant (Top Left)'),
+              ),
+            ],
+          ),
+        ],
       ),
       extendBodyBehindAppBar: true,
       body: Container(
@@ -84,65 +160,123 @@ class _EquationDemoPageState extends State<EquationDemoPage> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
+            colors: [Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)],
           ),
         ),
-        child: Center(
+        child: SafeArea(
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Card(
-                elevation: 10,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                color: Colors.white.withAlpha(13), // 0.05 * 255
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: EquationPainterWidget(
-                    function: _currentFunction,
-                    width: 800,
-                    height: 800,
-                    graphLineColor: Colors.cyanAccent,
-                    graphLineStrokeWidth: 3.0,
-                    gridColor: Colors.white10,
-                    showGrid: true,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 40),
-              Container(
+              // Selection Dropdown
+              Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 5,
+                  horizontal: 24,
+                  vertical: 8,
                 ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(26), // 0.1 * 255
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedEquation,
-                    items: ['Circle', 'Heart', 'Sine Wave', 'Cross'].map((
-                      String value,
-                    ) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(value),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedEquation = value!;
-                      });
-                    },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(25),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white10),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<EquationExample>(
+                      value: _selectedExample,
+                      isExpanded: true,
+                      dropdownColor: const Color(0xFF203A43),
+                      borderRadius: BorderRadius.circular(16),
+                      items: _examples
+                          .map(
+                            (e) => DropdownMenuItem(
+                              value: e,
+                              child: Text(
+                                e.name,
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() => _selectedExample = val);
+                        }
+                      },
+                    ),
                   ),
                 ),
               ),
-              // const SizedBox(height: 20),
-              const Text(
-                'Explore mathematical curves using Marching Squares',
-                style: TextStyle(color: Colors.white54, fontSize: 12),
+
+              // Formula Display
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  _selectedExample.formula,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: _selectedExample.color.withAlpha(204),
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withAlpha(127),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // The Visualization Widget
+              Expanded(
+                child: Center(
+                  child: Container(
+                    margin: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withAlpha(76),
+                          blurRadius: 40,
+                          spreadRadius: 5,
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(28),
+                      child: EquationPainterWidget(
+                        key: ValueKey('${_selectedExample.name}_$_alignment'),
+                        width: MediaQuery.of(context).size.width,
+                        height: MediaQuery.of(context).size.width,
+                        alignment: _alignment,
+                        showNumbers: true,
+                        labelColor: Colors.white,
+                        unitsPerSquare: _selectedExample.unitsPerSquare,
+                        animationDuration: const Duration(milliseconds: 2000),
+                        equations: [
+                          EquationConfig(
+                            function: _selectedExample.function,
+                            color: _selectedExample.color,
+                            strokeWidth: 3.0,
+                            animationType: _selectedExample.animationType,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              const Padding(
+                padding: EdgeInsets.only(bottom: 24, left: 40, right: 40),
+                child: Text(
+                  "Interactive implicit equation rendering in real-time.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
               ),
             ],
           ),
