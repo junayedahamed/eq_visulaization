@@ -34,9 +34,9 @@ class _EquationDemoPageState extends State<EquationDemoPage> {
   String _selectedEquation = 'Triple Circle';
   Alignment _alignment = Alignment.center;
 
-  double _circle(double x, double y, double r) {
-    return x * x + y * y - (r * r);
-  }
+  // double _circle(double x, double y, double r) {
+  //   return x * x + y * y - (r * r);
+  // }
 
   double _heart(double x, double y) {
     double xx = x / 40;
@@ -44,76 +44,76 @@ class _EquationDemoPageState extends State<EquationDemoPage> {
     return pow(xx * xx + yy * yy - 1, 3) - xx * xx * pow(yy, 3);
   }
 
-  double _sine(double x, double y) {
-    return y - 50 * sin(x / 20);
-  }
+  // double _sine(double x, double y) {
+  //   return y - 50 * sin(x / 20);
+  // }
 
-  double _butterfly(double x, double y) {
-    double xx = x / 60;
-    double yy = y / 60;
-    return pow(xx * xx + yy * yy, 2) - 0.8 * (xx * xx - yy * yy);
-  }
+  // double _butterfly(double x, double y) {
+  //   double xx = x / 60;
+  //   double yy = y / 60;
+  //   return pow(xx * xx + yy * yy, 2) - 0.8 * (xx * xx - yy * yy);
+  // }
 
-  List<EquationConfig> get _currentEquations {
-    switch (_selectedEquation) {
-      case 'Triple Circle':
-        return [
-          EquationConfig(
-            function: (x, y) => _circle(x, y, 60),
-            color: Colors.blueAccent,
-            strokeWidth: 2,
-          ),
-          EquationConfig(
-            function: (x, y) => _circle(x, y, 100),
-            color: Colors.cyanAccent,
-            strokeWidth: 3,
-          ),
-          EquationConfig(
-            function: (x, y) => _circle(x, y, 140),
-            color: Colors.tealAccent,
-            strokeWidth: 4,
-          ),
-        ];
-      case 'Heart & Sine':
-        return [
-          EquationConfig(
-            function: _heart,
-            color: Colors.pinkAccent,
-            strokeWidth: 4,
-            animationType: AnimationType.sequential,
-          ),
-          EquationConfig(
-            function: _sine,
-            color: Colors.yellowAccent,
-            strokeWidth: 2,
-            animationType: AnimationType.linearX,
-          ),
-        ];
-      case 'Butterfly Garden':
-        return [
-          EquationConfig(
-            function: (x, y) => _butterfly(x - 100, y - 100),
-            color: Colors.purpleAccent,
-          ),
-          EquationConfig(
-            function: (x, y) => _butterfly(x + 100, y + 100),
-            color: Colors.orangeAccent,
-          ),
-          EquationConfig(
-            function: (x, y) => _butterfly(x, y),
-            color: Colors.white70,
-            strokeWidth: 1,
-          ),
-        ];
-      default:
-        return [
-          EquationConfig(
-            function: (x, y) => _circle(x, y, 80),
-            color: Colors.blue,
-          ),
-        ];
-    }
-  }
+  // List<EquationConfig> get _currentEquations {
+  //   switch (_selectedEquation) {
+  //     case 'Triple Circle':
+  //       return [
+  //         EquationConfig(
+  //           function: (x, y) => _circle(x, y, 60),
+  //           color: Colors.blueAccent,
+  //           strokeWidth: 2,
+  //         ),
+  //         EquationConfig(
+  //           function: (x, y) => _circle(x, y, 100),
+  //           color: Colors.cyanAccent,
+  //           strokeWidth: 3,
+  //         ),
+  //         EquationConfig(
+  //           function: (x, y) => _circle(x, y, 140),
+  //           color: Colors.tealAccent,
+  //           strokeWidth: 4,
+  //         ),
+  //       ];
+  //     case 'Heart & Sine':
+  //       return [
+  //         EquationConfig(
+  //           function: _heart,
+  //           color: Colors.pinkAccent,
+  //           strokeWidth: 4,
+  //           animationType: AnimationType.sequential,
+  //         ),
+  //         EquationConfig(
+  //           function: _sine,
+  //           color: Colors.yellowAccent,
+  //           strokeWidth: 2,
+  //           animationType: AnimationType.linearX,
+  //         ),
+  //       ];
+  //     case 'Butterfly Garden':
+  //       return [
+  //         EquationConfig(
+  //           function: (x, y) => _butterfly(x - 100, y - 100),
+  //           color: Colors.purpleAccent,
+  //         ),
+  //         EquationConfig(
+  //           function: (x, y) => _butterfly(x + 100, y + 100),
+  //           color: Colors.orangeAccent,
+  //         ),
+  //         EquationConfig(
+  //           function: (x, y) => _butterfly(x, y),
+  //           color: Colors.white70,
+  //           strokeWidth: 1,
+  //         ),
+  //       ];
+  //     default:
+  //       return [
+  //         EquationConfig(
+  //           function: (x, y) => _circle(x, y, 80),
+  //           color: Colors.blue,
+  //         ),
+  //       ];
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -149,7 +149,15 @@ class _EquationDemoPageState extends State<EquationDemoPage> {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(30),
                   child: EquationPainterWidget(
-                    equations: _currentEquations,
+                    equations: [
+                      EquationConfig(
+                        function: (double a, double b) =>
+                            tan(a / 10) - tan(b / 10) - sin(a / b) + cos(b / a),
+                        animationType: AnimationType.linearX,
+                        color: Colors.red,
+                        strokeWidth: 2,
+                      ),
+                    ],
                     width: 700,
                     height: 700,
                     alignment: _alignment,
