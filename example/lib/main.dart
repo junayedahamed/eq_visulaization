@@ -332,9 +332,9 @@ class MyApp extends StatelessWidget {
 //                                 ),
 //                               )
 //                             // FIX BUG-12: Use 0 (fills constraints) instead of MediaQuery
-//                             // so the LayoutBuilder inside EquationPainterWidget correctly
+//                             // so the LayoutBuilder inside EquationPainter correctly
 //                             // receives the available space from Expanded.
-//                             : EquationPainterWidget(
+//                             : EquationPainter(
 //                                 width: 0, // 0 → fills LayoutBuilder constraint
 //                                 height: 0, // 0 → fills LayoutBuilder constraint
 //                                 unitsPerSquare: 10.0,

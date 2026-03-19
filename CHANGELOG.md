@@ -1,3 +1,8 @@
+## 0.1.0+1
+
+* Renamed `EquationPainterWidget` to `EquationPainter` for better clarity and ease of use.
+* Minor code cleanup and performance improvements.
+
 ## 0.0.2+2
 
 * Added `showHint` parameter to `EquationPainterWidget` for optional troubleshooting guidance.

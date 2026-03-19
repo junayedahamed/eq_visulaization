@@ -32,7 +32,7 @@ class EquationConfig {
   /// The thickness of the curve line.
   final double strokeWidth;
 
-  /// Optional override for the [AnimationType]. If null, the [EquationPainterWidget.animationType] is used.
+  /// Optional override for the [AnimationType]. If null, the [EquationPainter.animationType] is used.
   final AnimationType? animationType;
 
   /// Optional minimum X value (mathematical coordinates) to bound the plotting.
