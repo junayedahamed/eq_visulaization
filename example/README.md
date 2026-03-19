@@ -1,7 +1,7 @@
-# 📈 eq_visualization Example
+# 📈 equation_painter Example
 Open Sourced by GitHub user **junayedahamed**
 
-A powerful example demonstrating how to use the `eq_visulaization` package for visualizing multiple mathematical equations interactively.
+A powerful example demonstrating how to use the `equation_painter` package for visualizing multiple mathematical equations interactively.
 
 ---
 
@@ -16,7 +16,7 @@ A powerful example demonstrating how to use the `eq_visulaization` package for v
 <br>
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/junayedahamed/eq_visualization/main/assets/preview.png" alt="Preview" width="700">
+  <img src="https://raw.githubusercontent.com/junayedahamed/equation_painter/main/assets/preview.png" alt="Preview" width="700">
 </div>
 
 ### ✨ Features Shown

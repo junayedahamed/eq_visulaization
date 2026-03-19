@@ -1,7 +1,7 @@
 import 'dart:math';
 
+import 'package:equation_painter/equation_painter.dart';
 import 'package:flutter/material.dart';
-import 'package:eq_visulaization/eq_visulaization.dart';
 
 void main() {
   runApp(const MyApp());

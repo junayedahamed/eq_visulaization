@@ -5,18 +5,18 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "eq_visulaization",
+            "name": "equation_painter",
             "request": "launch",
             "type": "dart"
         },
         {
-            "name": "eq_visulaization (profile mode)",
+            "name": "equation_painter (profile mode)",
             "request": "launch",
             "type": "dart",
             "flutterMode": "profile"
         },
         {
-            "name": "eq_visulaization (release mode)",
+            "name": "equation_painter (release mode)",
             "request": "launch",
             "type": "dart",
             "flutterMode": "release"

@@ -1,4 +1,4 @@
-# 📈 eq_visualization
+# 📈 equation_painter
 Open Sourced by GitHub user **junayedahamed**
 
 A powerful, interactive, and performant Flutter package for visualizing multiple mathematical equations simultaneously with beautiful animations and a fully customizable coordinate system.
@@ -16,7 +16,7 @@ A powerful, interactive, and performant Flutter package for visualizing multiple
 <br>
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/junayedahamed/eq_visualization/main/assets/preview.png" alt="Preview" width="700">
+  <img src="https://raw.githubusercontent.com/junayedahamed/equation_painter/main/assets/preview.png" alt="Preview" width="700">
 </div>
 
 ### ✨ Features
@@ -29,9 +29,9 @@ A powerful, interactive, and performant Flutter package for visualizing multiple
 
 ### 📸 Screenshots
 <div style="display: flex; flex-wrap: wrap;">
-  <img src="https://raw.githubusercontent.com/junayedahamed/eq_visualization/main/assets/screenshots/Screenshot%20from%202026-03-19%2001-31-47.png" height="200">
-  <img src="https://raw.githubusercontent.com/junayedahamed/eq_visualization/main/assets/screenshots/Screenshot%20from%202026-03-19%2002-10-56.png" height="200">
-  <img src="https://raw.githubusercontent.com/junayedahamed/eq_visualization/main/assets/screenshots/Screenshot%20from%202026-03-19%2002-11-27.png" height="200">
+  <img src="https://raw.githubusercontent.com/junayedahamed/equation_painter/main/assets/screenshots/Screenshot%20from%202026-03-19%2001-31-47.png" height="200">
+  <img src="https://raw.githubusercontent.com/junayedahamed/equation_painter/main/assets/screenshots/Screenshot%20from%202026-03-19%2002-10-56.png" height="200">
+  <img src="https://raw.githubusercontent.com/junayedahamed/equation_painter/main/assets/screenshots/Screenshot%20from%202026-03-19%2002-11-27.png" height="200">
 </div>
 
 ### 🚀 Getting Started
@@ -40,13 +40,13 @@ Add the package to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  eq_visulaization: ^0.0.1+2
+  equation_painter: ^0.0.1+2
 ```
 
 ### 💡 Usage
 
 ```dart
-import 'package:eq_visulaization/eq_visulaization.dart';
+import 'package:equation_painter/equation_painter.dart';
 
 // ... inside your widget tree
 EquationPainterWidget(
@@ -108,13 +108,13 @@ if (mathFunction != null) {
 
 ```yaml
 dependencies:
-  eq_visulaization: ^0.0.1+2
+  equation_painter: ^0.0.1+2
 ```
 
 ### 💡 ব্যবহার পদ্ধতি
 
 ```dart
-import 'package:eq_visulaization/eq_visulaization.dart';
+import 'package:equation_painter/equation_painter.dart';
 
 // ... আপনার উইজেট ট্রির ভেতরে
 EquationPainterWidget(

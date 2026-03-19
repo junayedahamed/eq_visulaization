@@ -1,9 +1,9 @@
-name: eq_visulaization
+name: equation_painter
 description: High-performance Flutter widget for visualizing multiple mathematical equations simultaneously with beautiful reveal animations and a customizable coordinate system.
 version: 0.0.2+2
-homepage: https://github.com/junayedahamed/eq_visualization
-repository: https://github.com/junayedahamed/eq_visualization
-issue_tracker: https://github.com/junayedahamed/eq_visualization/issues
+homepage: https://github.com/junayedahamed/equation_painter
+repository: https://github.com/junayedahamed/equation_painter
+issue_tracker: https://github.com/junayedahamed/equation_painter/issues
 
 environment:
   sdk: ^3.11.0

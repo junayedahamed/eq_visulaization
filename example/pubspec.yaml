@@ -1,5 +1,5 @@
 name: example
-description: "Demonstrates how to use the eq_visulaization package."
+description: "Demonstrates how to use the equation_painter package."
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -10,10 +10,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  eq_visulaization: 
+  equation_painter:
     path: ../
-
-dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0

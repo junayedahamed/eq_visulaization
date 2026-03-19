@@ -9,7 +9,7 @@
 <summary><b>🇬🇧 English Examples (Click to Expand)</b></summary>
 <br>
 
-This file provides a quick, standalone code example for the `eq_visulaization` package.
+This file provides a quick, standalone code example for the `equation_painter` package.
 
 ### Simple Equation (Sine Wave)
 
@@ -18,7 +18,7 @@ Use the following code to render a basic sine wave with a linear animation from 
 ```dart
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:eq_visulaization/eq_visulaization.dart';
+import 'package:equation_painter/equation_painter.dart';
 
 void main() => runApp(const MaterialApp(home: SimpleDemo()));
 
@@ -82,7 +82,7 @@ For more advanced examples, please check the [example/lib/main.dart](example/lib
 <summary><b>🇧🇩 টেক্সট উদাহরণ (বিস্তারিত দেখতে ক্লিক করুন)</b></summary>
 <br>
 
-এই ফাইলটি `eq_visulaization` প্যাকেজের জন্য একটি দ্রুত এবং স্ট্যান্ডঅ্যালোন কোড উদাহরণ প্রদান করে।
+এই ফাইলটি `equation_painter` প্যাকেজের জন্য একটি দ্রুত এবং স্ট্যান্ডঅ্যালোন কোড উদাহরণ প্রদান করে।
 
 ### সহজ সমীকরণ (Sine Wave)
 
@@ -91,7 +91,7 @@ For more advanced examples, please check the [example/lib/main.dart](example/lib
 ```dart
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:eq_visulaization/eq_visulaization.dart';
+import 'package:equation_painter/equation_painter.dart';
 
 void main() => runApp(const MaterialApp(home: SimpleDemo()));
 

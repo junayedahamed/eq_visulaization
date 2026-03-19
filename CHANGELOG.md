@@ -17,7 +17,7 @@
 
 ## 0.0.1+1
 
-* Initial release of `eq_visulaization`.
+* Initial release of `equation_painter`.
 * Supports multiple mathematical equations with beautiful reveal animations.
 * Customizable coordinate system with axes, grids, and numerical labels.
 * High performance rendering using `Float32List` and `drawRawPoints`.
