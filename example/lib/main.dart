@@ -54,7 +54,7 @@ class _EquationVisualizerPageState extends State<EquationVisualizerPage> {
     super.dispose();
   }
 
-  void _updateGraph() {
+  void _updateGraph({bool showErrors = true}) {
     final equation = _equationController.text.trim();
 
     // Clear graph when the field is empty
@@ -67,17 +67,19 @@ class _EquationVisualizerPageState extends State<EquationVisualizerPage> {
 
     final fn = EquationParser.parseOrNull(equation);
     if (fn == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Invalid equation: "$equation"\nCheck syntax (e.g. x^2 + y^2 - 100)',
-            style: const TextStyle(fontFamily: 'monospace'),
+      if (showErrors && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Invalid equation: "$equation"\nCheck syntax (e.g. x^2 + y^2 - 100)',
+              style: const TextStyle(fontFamily: 'monospace'),
+            ),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
           ),
-          backgroundColor: Colors.red.shade700,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 4),
-        ),
-      );
+        );
+      }
       return;
     }
 
@@ -128,6 +130,7 @@ class _EquationVisualizerPageState extends State<EquationVisualizerPage> {
             borderSide: BorderSide.none,
           ),
         ),
+        onChanged: (_) => _updateGraph(showErrors: false),
         onSubmitted: (_) => _updateGraph(),
       ),
     );
@@ -244,7 +247,10 @@ class _EquationVisualizerPageState extends State<EquationVisualizerPage> {
                                 )
                               : null,
                         ),
-                        onChanged: (_) => setState(() {}),
+                        onChanged: (_) {
+                          setState(() {});
+                          _updateGraph(showErrors: false);
+                        },
                         onSubmitted: (_) => _updateGraph(),
                       ),
                       const SizedBox(height: 12),
