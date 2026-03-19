@@ -1,66 +1,11 @@
 import 'dart:math';
 import 'dart:typed_data';
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
-/// [MathFunction] represents a mathematical function of two variables (x, y).
-/// It returns a double value which can be used for implicit equation plotting.
-typedef MathFunction = double Function(double x, double y);
-
-/// [AnimationType] defines how the mathematical equation is revealed during the animation process.
-enum AnimationType {
-  /// The curve is revealed starting from the origin (0,0) and moving outwards.
-  radial,
-
-  /// The curve is revealed point-by-point following its path, creating a "hand-drawn" effect.
-  sequential,
-
-  /// The curve is revealed from the leftmost visible point to the rightmost.
-  linearX,
-
-  /// The curve is revealed from the topmost visible point to the bottom.
-  linearY,
-}
-
-/// [EquationConfig] holds the configuration for a single mathematical equation in the plot.
-/// It includes the [function] itself, visual properties like [color] and [strokeWidth],
-/// and optional constraints like [minX], [maxX], etc.
-class EquationConfig {
-  /// The actual [MathFunction] to be plotted.
-  final MathFunction function;
-
-  /// The color used to draw this specific equation's curve.
-  final Color color;
-
-  /// The thickness of the curve line.
-  final double strokeWidth;
-
-  /// Optional override for the [AnimationType]. If null, the [EquationPainterWidget.animationType] is used.
-  final AnimationType? animationType;
-
-  /// Optional minimum X value (mathematical coordinates) to bound the plotting.
-  final double? minX;
-
-  /// Optional maximum X value (mathematical coordinates) to bound the plotting.
-  final double? maxX;
-
-  /// Optional minimum Y value (mathematical coordinates) to bound the plotting.
-  final double? minY;
-
-  /// Optional maximum Y value (mathematical coordinates) to bound the plotting.
-  final double? maxY;
-
-  const EquationConfig({
-    required this.function,
-    this.color = Colors.blue,
-    this.strokeWidth = 2.0,
-    this.animationType,
-    this.minX,
-    this.maxX,
-    this.minY,
-    this.maxY,
-  });
-}
+import 'equation_config.dart';
+import 'background_painter.dart';
+import 'graph_painter.dart';
+import 'line_segment.dart';
 
 /// [EquationPainterWidget] is the primary widget responsible for rendering and animating
 /// one or more mathematical equations on a coordinate system grid.
@@ -257,7 +202,7 @@ class _EquationPainterWidgetState extends State<EquationPainterWidget>
     _allPoints = all;
   }
 
-  List<_LineSegment> _calculateSegmentsFor(EquationConfig config, double w, double h) {
+  List<LineSegment> _calculateSegmentsFor(EquationConfig config, double w, double h) {
     // Dynamic resolution: 4.0 normally, 8.0 during interaction for faster calc
     final double steps = _isInteracting ? 8.0 : 4.0;
 
@@ -310,7 +255,7 @@ class _EquationPainterWidgetState extends State<EquationPainterWidget>
       }
     }
 
-    final rawSegments = <_LineSegment>[];
+    final rawSegments = <LineSegment>[];
 
     for (int r = 0; r < rows - 1; r++) {
       for (int c = 0; c < cols - 1; c++) {
@@ -365,7 +310,7 @@ class _EquationPainterWidgetState extends State<EquationPainterWidget>
                 break;
             }
           }
-          rawSegments.add(_LineSegment(p1m, p2m, dist));
+          rawSegments.add(LineSegment(p1m, p2m, dist));
         }
       }
     }
@@ -384,10 +329,10 @@ class _EquationPainterWidgetState extends State<EquationPainterWidget>
     }
   }
 
-  List<_LineSegment> _sortSegmentsSequentially(List<_LineSegment> segments) {
+  List<LineSegment> _sortSegmentsSequentially(List<LineSegment> segments) {
     if (segments.isEmpty) return [];
-    final sorted = <_LineSegment>[];
-    final unvisited = List<_LineSegment>.from(segments);
+    final sorted = <LineSegment>[];
+    final unvisited = List<LineSegment>.from(segments);
 
     while (unvisited.isNotEmpty) {
       var current = unvisited.removeAt(0);
@@ -424,7 +369,7 @@ class _EquationPainterWidgetState extends State<EquationPainterWidget>
         if (bestIdx != -1) {
           var nextSeg = unvisited.removeAt(bestIdx);
           if (reversed) {
-            nextSeg = _LineSegment(nextSeg.p2, nextSeg.p1, 0);
+            nextSeg = LineSegment(nextSeg.p2, nextSeg.p1, 0);
           }
           sorted.add(nextSeg);
           current = nextSeg;
@@ -505,7 +450,7 @@ class _EquationPainterWidgetState extends State<EquationPainterWidget>
                 RepaintBoundary(
                   child: CustomPaint(
                     size: currentSize,
-                    painter: _BackgroundPainter(
+                    painter: BackgroundPainter(
                       showGrid: widget.showGrid,
                       showAxis: widget.showAxis,
                       gridColor: widget.gridColor,
@@ -524,7 +469,7 @@ class _EquationPainterWidgetState extends State<EquationPainterWidget>
                 builder: (context, _) {
                   return CustomPaint(
                     size: currentSize,
-                    painter: _GraphPainter(
+                    painter: GraphPainter(
                       allPoints: _allPoints ?? [],
                       equations: widget.equations,
                       // Draw fully immediately if user panning/zoomed
@@ -550,216 +495,5 @@ class _EquationPainterWidgetState extends State<EquationPainterWidget>
         }
       },
     );
-  }
-}
-
-class _LineSegment {
-  final Offset p1;
-  final Offset p2;
-  final double distance;
-  _LineSegment(this.p1, this.p2, this.distance);
-}
-
-class _BackgroundPainter extends CustomPainter {
-  final bool showGrid;
-  final bool showAxis;
-  final Color gridColor;
-  final double gridStrokeWidth;
-  final Alignment alignment;
-  final bool showNumbers;
-  final double unitsPerSquare;
-  final Color labelColor;
-  final Color xAxisColor;
-  final Color yAxisColor;
-
-  _BackgroundPainter({
-    required this.showGrid,
-    required this.showAxis,
-    required this.gridColor,
-    required this.gridStrokeWidth,
-    required this.alignment,
-    required this.showNumbers,
-    required this.unitsPerSquare,
-    required this.labelColor,
-    required this.xAxisColor,
-    required this.yAxisColor,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    final paint = Paint();
-
-    final originX = (1 + alignment.x) * w / 2;
-    final originY = (1 + alignment.y) * h / 2;
-
-    const double gridStep = 40.0;
-
-    if (showGrid) {
-      paint.color = gridColor;
-      paint.strokeWidth = gridStrokeWidth;
-
-      for (double x = originX; x <= w; x += gridStep) {
-        canvas.drawLine(Offset(x, 0), Offset(x, h), paint);
-      }
-      for (double x = originX - gridStep; x >= 0; x -= gridStep) {
-        canvas.drawLine(Offset(x, 0), Offset(x, h), paint);
-      }
-
-      for (double y = originY; y <= h; y += gridStep) {
-        canvas.drawLine(Offset(0, y), Offset(w, y), paint);
-      }
-      for (double y = originY - gridStep; y >= 0; y -= gridStep) {
-        canvas.drawLine(Offset(0, y), Offset(w, y), paint);
-      }
-    }
-
-    if (showAxis) {
-      paint.strokeWidth = 2.0;
-
-      if (originY >= 0 && originY <= h) {
-        paint.color = xAxisColor;
-        canvas.drawLine(Offset(0, originY), Offset(w, originY), paint);
-      }
-      if (originX >= 0 && originX <= w) {
-        paint.color = yAxisColor;
-        canvas.drawLine(Offset(originX, 0), Offset(originX, h), paint);
-      }
-
-      if (showNumbers) {
-        _drawLabels(canvas, size, originX, originY);
-      }
-    }
-  }
-
-  void _drawLabels(Canvas canvas, Size size, double originX, double originY) {
-    final w = size.width;
-    final h = size.height;
-
-    const double gridStep = 40.0;
-
-    final textStyle = TextStyle(
-      color: labelColor,
-      fontSize: 10,
-      fontWeight: FontWeight.w500,
-    );
-
-    void drawText(String text, Offset pos, {bool isX = true}) {
-      final tp = TextPainter(
-        text: TextSpan(text: text, style: textStyle),
-        textDirection: TextDirection.ltr,
-      );
-      tp.layout();
-
-      double dx = pos.dx;
-      double dy = pos.dy;
-
-      if (isX) {
-        dx -= tp.width / 2;
-        dy += 4;
-        if (dy + tp.height > h) dy -= (tp.height + 8);
-      } else {
-        dx += 4;
-        dy -= tp.height / 2;
-        if (dx + tp.width > w) dx -= (tp.width + 8);
-      }
-
-      tp.paint(canvas, Offset(dx, dy));
-    }
-
-    int xCount = 1;
-    for (double x = originX + gridStep; x <= w; x += gridStep) {
-      final val = xCount * unitsPerSquare;
-      drawText(_format(val), Offset(x, originY), isX: true);
-      xCount++;
-    }
-    xCount = -1;
-    for (double x = originX - gridStep; x >= 0; x -= gridStep) {
-      final val = xCount * unitsPerSquare;
-      drawText(_format(val), Offset(x, originY), isX: true);
-      xCount--;
-    }
-
-    int yCount = 1;
-    for (double y = originY - gridStep; y >= 0; y -= gridStep) {
-      final val = yCount * unitsPerSquare;
-      drawText(_format(val), Offset(originX, y), isX: false);
-      yCount++;
-    }
-    yCount = -1;
-    for (double y = originY + gridStep; y <= h; y += gridStep) {
-      final val = yCount * unitsPerSquare;
-      drawText(_format(val), Offset(originX, y), isX: false);
-      yCount--;
-    }
-  }
-
-  String _format(double v) {
-    if (v == v.toInt()) return v.toInt().toString();
-    
-    // Automatically adjust decimal places based on zoom magnitude
-    if (v.abs() < 0.01) return v.toStringAsExponential(1);
-    if (v.abs() < 0.1) return v.toStringAsFixed(3);
-    if (v.abs() < 1) return v.toStringAsFixed(2);
-    return v.toStringAsFixed(1);
-  }
-
-  @override
-  bool shouldRepaint(covariant _BackgroundPainter oldDelegate) {
-    return oldDelegate.showGrid != showGrid ||
-        oldDelegate.showAxis != showAxis ||
-        oldDelegate.gridColor != gridColor ||
-        oldDelegate.gridStrokeWidth != gridStrokeWidth ||
-        oldDelegate.alignment != alignment ||
-        oldDelegate.showNumbers != showNumbers ||
-        oldDelegate.unitsPerSquare != unitsPerSquare ||
-        oldDelegate.labelColor != labelColor ||
-        oldDelegate.xAxisColor != xAxisColor ||
-        oldDelegate.yAxisColor != yAxisColor;
-  }
-}
-
-class _GraphPainter extends CustomPainter {
-  final List<Float32List> allPoints;
-  final List<EquationConfig> equations;
-  final double animationProgress;
-
-  _GraphPainter({
-    required this.allPoints,
-    required this.equations,
-    required this.animationProgress,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (allPoints.isEmpty) return;
-
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..isAntiAlias = true
-      ..strokeCap = StrokeCap.round;
-
-    for (int i = 0; i < allPoints.length; i++) {
-      if (i >= equations.length) break;
-      final points = allPoints[i];
-      final config = equations[i];
-      paint.color = config.color;
-      paint.strokeWidth = config.strokeWidth;
-
-      final totalSegments = points.length ~/ 4;
-      final countToDraw = (totalSegments * animationProgress).toInt();
-      if (countToDraw <= 0) continue;
-
-      final pointsToDraw = Float32List.sublistView(points, 0, countToDraw * 4);
-      canvas.drawRawPoints(ui.PointMode.lines, pointsToDraw, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _GraphPainter oldDelegate) {
-    return oldDelegate.animationProgress != animationProgress ||
-        oldDelegate.allPoints != allPoints ||
-        oldDelegate.equations != equations;
   }
 }
