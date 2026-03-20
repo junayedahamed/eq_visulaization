@@ -20,7 +20,10 @@ A powerful, interactive, and performant Flutter package for visualizing multiple
 </div>
 
 ### ✨ Features
-- ✅ **New: Interactive Panning**: You can now drag to pan around the coordinate system!
+- ✅ **New: Interactive Panning & Zooming**: Drag to pan and pinch to zoom around the coordinate system!
+- ✅ **New: Polar Coordinate Support**: Visualize equations in polar form `r = f(theta)`.
+- ✅ **New: Inequality Visualization**: Shading for regions like `y >= x` or `x^2 + y^2 <= 25`.
+- ✅ **New: Tap & Hover to Inspect**: Tap or hover on any curve to see the exact (x, y) or (r, theta) coordinates.
 - ✅ **Robust Equation Parsing**: Type equations like `x^2 + y^2 - 100`, `sin(2x) - y`, `pow(x,2) * atan2(y,x)` directly. It supports implicit multiplication (`2x`), constants (`pi`, `e`), unit +/- and ~20 built-in math functions.
 - ✅ **Coordinate Labels**: Show dynamic numbers along the axis to measure your functions.
 - ✅ **Configurable Units**: Define how many units each grid square represents.
@@ -46,23 +49,20 @@ dependencies:
 ### 💡 Usage
 
 ```dart
-import 'package:equation_painter/equation_painter.dart';
-
-// ... inside your widget tree
-EquationPainterWidget(
-  width: double.infinity,
-  height: 400,
-  interactive: true, // Auto pan/zoom enabled!
-  unitsPerSquare: 50.0,
-  alignment: Alignment.center,
+EquationPainter(
   equations: [
     EquationConfig(
-      function: EquationParser.parse('x^2 + y^2 - 2500'), // x^2 + y^2 = 50^2
-      color: Colors.cyanAccent,
-      strokeWidth: 3,
-      animationType: AnimationType.radial,
+      function: (x, y) => x * x + y * y - 25,
+      color: Colors.indigoAccent,
+      strokeWidth: 4,
     ),
   ],
+  unitsPerSquare: 10,
+  interactive: true,
+  showGrid: true,
+  onPointTapped: (x, y, config) {
+    print("Tapped at ($x, $y)");
+  },
 )
 ```
 
@@ -82,16 +82,14 @@ if (mathFunction != null) {
 }
 ```
 
-### 🔭 Future Ideas
-- Adding Polar Coordinate system support.
-- Inequality shading support (e.g., `y >= x`).
-- User tapping on graph curves to trace exact X/Y coordinate values dynamically.
+### ❄️ Advanced Features
+- **Polar Coordinates**: Use `EquationType.polar` in `EquationConfig`.
+- **Inequalities**: Set `inequality: InequalityType.greaterThanOrEqual` for region shading.
+- **Hover Inspection**: Move your mouse over a curve to automatically see values.
+- **Tap Support**: Implement `onPointTapped` to handle clicks on specific coordinates.
 
-</details>
-
-
-<details id="bangla">
-<summary><b>🇧🇩 বাংলা ডকুমেন্টেশন (বিস্তারিত দেখতে ক্লিক করুন)</b></summary>
+### 🔭 Licensing
+This project is licensed under the MIT License.
 
 <br>
 

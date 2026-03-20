@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'equation_config.dart';
 import 'background_painter.dart';
@@ -65,6 +66,9 @@ class EquationPainter extends StatefulWidget {
   /// Whether to show a hint when no equations are visible.
   final bool showHint;
 
+  /// Callback when a point on a curve is tapped.
+  final void Function(double x, double y, EquationConfig config)? onPointTapped;
+
   const EquationPainter({
     super.key,
     required this.equations,
@@ -85,6 +89,7 @@ class EquationPainter extends StatefulWidget {
     this.yAxisColor = Colors.black54,
     this.interactive = true, // Enabled by default
     this.showHint = true,
+    this.onPointTapped,
   });
 
   @override
@@ -103,6 +108,12 @@ class _EquationPainterState extends State<EquationPainter>
 
   // During active gestures, we lower calculation quality for 60fps performance
   bool _isInteracting = false;
+
+  // Hover state
+  Offset? _hoverPos;
+  double? _hoverMathX;
+  double? _hoverMathY;
+  EquationConfig? _hoverConfig;
 
   @override
   void initState() {
@@ -162,6 +173,9 @@ class _EquationPainterState extends State<EquationPainter>
         final eq = widget.equations[i];
         final oldEq = oldWidget.equations[i];
         if (eq.function != oldEq.function ||
+            eq.type != oldEq.type ||
+            eq.inequality != oldEq.inequality ||
+            eq.fillOpacity != oldEq.fillOpacity ||
             eq.animationType != oldEq.animationType ||
             eq.minX != oldEq.minX ||
             eq.maxX != oldEq.maxX ||
@@ -192,6 +206,16 @@ class _EquationPainterState extends State<EquationPainter>
 
     final all = <Float32List>[];
     for (final eq in widget.equations) {
+      if (eq.inequality != InequalityType.none) {
+        final vertices = _calculateRegionFor(eq, width, height);
+        final points = Float32List(vertices.length * 2);
+        for (int i = 0; i < vertices.length; i++) {
+          points[i * 2 + 0] = vertices[i].dx;
+          points[i * 2 + 1] = vertices[i].dy;
+        }
+        all.add(points);
+        continue;
+      }
       final segments = _calculateSegmentsFor(eq, width, height);
 
       final points = Float32List(segments.length * 4);
@@ -237,6 +261,17 @@ class _EquationPainterState extends State<EquationPainter>
     final maxY = min(canvasMaxY, config.maxY ?? double.infinity);
 
     if (minX >= maxX || minY >= maxY) return [];
+
+    if (config.type == EquationType.polar) {
+      return _calculatePolarSegments(
+        config,
+        w,
+        h,
+        pixelsPerUnit,
+        originX,
+        originY,
+      );
+    }
 
     final double stepX = steps / pixelsPerUnit;
     final List<double> xValues = [];
@@ -339,6 +374,189 @@ class _EquationPainterState extends State<EquationPainter>
     }
   }
 
+  List<LineSegment> _calculatePolarSegments(
+    EquationConfig config,
+    double w,
+    double h,
+    double pixelsPerUnit,
+    double originX,
+    double originY,
+  ) {
+    // For polar r = f(theta), we can sample theta from 0 to 2pi (or more)
+    // and draw segments between the resulting (r, theta) points.
+    // If it's an implicit polar equation f(r, theta) = 0, we can use marching squares
+    // in the (r, theta) space.
+
+    // Let's assume the user provides f(r, theta) = 0.
+    // We'll sample r from 0 to max radius visible, and theta from 0 to 2pi.
+    final double maxRadius =
+        sqrt(
+          pow(max(originX, w - originX), 2) + pow(max(originY, h - originY), 2),
+        ) /
+        pixelsPerUnit;
+
+    final double stepR = (_isInteracting ? 8.0 : 4.0) / pixelsPerUnit;
+    final double stepTheta = pi / 90; // 2 degrees
+
+    final List<double> rValues = [];
+    for (double r = 0; r <= maxRadius + stepR; r += stepR) {
+      rValues.add(r);
+    }
+
+    final List<double> thetaValues = [];
+    for (double theta = 0; theta <= 2 * pi + stepTheta; theta += stepTheta) {
+      thetaValues.add(theta);
+    }
+
+    final int rRows = rValues.length;
+    final int tCols = thetaValues.length;
+
+    final List<double> values = List<double>.filled(rRows * tCols, 0);
+    for (int r = 0; r < rRows; r++) {
+      for (int t = 0; t < tCols; t++) {
+        // config.function(r, theta) -> here x is r, y is theta
+        final v = config.function(rValues[r], thetaValues[t]);
+        values[r * tCols + t] = (v.isFinite) ? v : double.nan;
+      }
+    }
+
+    final rawSegments = <LineSegment>[];
+
+    Offset polarToCanvas(double r, double theta) {
+      final x = r * cos(theta);
+      final y = r * sin(theta);
+      return Offset(originX + x * pixelsPerUnit, originY - y * pixelsPerUnit);
+    }
+
+    for (int r = 0; r < rRows - 1; r++) {
+      for (int t = 0; t < tCols - 1; t++) {
+        final double tlVal = values[r * tCols + t];
+        final double trVal = values[r * tCols + t + 1];
+        final double blVal = values[(r + 1) * tCols + t];
+        final double brVal = values[(r + 1) * tCols + t + 1];
+
+        if (tlVal.isNaN || trVal.isNaN || blVal.isNaN || brVal.isNaN) continue;
+
+        final r1 = rValues[r];
+        final r2 = rValues[r + 1];
+        final t1 = thetaValues[t];
+        final t2 = thetaValues[t + 1];
+
+        final points = <Offset>[];
+
+        void check(
+          double ra,
+          double ta,
+          double va,
+          double rb,
+          double tb,
+          double vb,
+        ) {
+          if ((va >= 0 && vb <= 0) || (va <= 0 && vb >= 0)) {
+            if (va == vb) return;
+            final interp = va / (va - vb);
+            final rp = ra + interp * (rb - ra);
+            final tp = ta + interp * (tb - ta);
+            points.add(polarToCanvas(rp, tp));
+          }
+        }
+
+        // Check edges in (r, theta) grid
+        check(r1, t1, tlVal, r1, t2, trVal);
+        check(r1, t2, trVal, r2, t2, brVal);
+        check(r2, t2, brVal, r2, t1, blVal);
+        check(r2, t1, blVal, r1, t1, tlVal);
+
+        if (points.length >= 2) {
+          // Calculation of distance for animation
+          // For polar, radial might still make sense
+          final p1 = points[0];
+          final p2 = points[1];
+          // Convert back to math coords for distance calculation
+          final mx1 = (p1.dx - originX) / pixelsPerUnit;
+          final my1 = (originY - p1.dy) / pixelsPerUnit;
+          final mx2 = (p2.dx - originX) / pixelsPerUnit;
+          final my2 = (originY - p2.dy) / pixelsPerUnit;
+
+          double dist = 0;
+          if (!_isInteracting) {
+            final animType = config.animationType ?? widget.animationType;
+            switch (animType) {
+              case AnimationType.radial:
+                dist = sqrt(mx1 * mx1 + my1 * my1);
+                break;
+              case AnimationType.linearX:
+                dist = (mx1 + mx2) / 2;
+                break;
+              case AnimationType.linearY:
+                dist = -(my1 + my2) / 2;
+                break;
+              case AnimationType.sequential:
+                dist = 0;
+                break;
+            }
+          }
+          rawSegments.add(LineSegment(p1, p2, dist));
+        }
+      }
+    }
+
+    if (rawSegments.isEmpty) return [];
+    if (_isInteracting) return rawSegments;
+
+    final animType = config.animationType ?? widget.animationType;
+    if (animType == AnimationType.sequential) {
+      return _sortSegmentsSequentially(rawSegments);
+    } else {
+      rawSegments.sort((a, b) => a.distance.compareTo(b.distance));
+      return rawSegments;
+    }
+  }
+
+  List<Offset> _calculateRegionFor(EquationConfig config, double w, double h) {
+    // For inequality, we sample points and check if the condition holds.
+    // If it holds, we can use triangles or rectangles to fill.
+    // Simplifying: we'll sample points and return vertices of small rectangles.
+    // we use a 2x higher resolution than lines since we fill pixels.
+
+    final double stepSize = _isInteracting ? 16.0 : 8.0;
+    final double safeScale = _currentScale > 0 ? _currentScale : 1.0;
+    final double pixelsPerUnit = 40.0 / safeScale;
+
+    final originX = (1 + _currentTranslation.dx) * w / 2;
+    final originY = (1 + _currentTranslation.dy) * h / 2;
+
+    List<Offset> vertices = [];
+
+    // Cartesian only for now for inequalities
+    for (double y = 0; y < h; y += stepSize) {
+      for (double x = 0; x < w; x += stepSize) {
+        final mathX = (x - originX) / pixelsPerUnit;
+        final mathY = (originY - y) / pixelsPerUnit;
+
+        final val = config.function(mathX, mathY);
+        bool inside = false;
+        if (config.inequality == InequalityType.greaterThanOrEqual) {
+          inside = val >= 0;
+        } else if (config.inequality == InequalityType.lessThanOrEqual) {
+          inside = val <= 0;
+        }
+
+        if (inside) {
+          // Add 2 triangles (6 vertices) for the small square
+          vertices.add(Offset(x, y));
+          vertices.add(Offset(x + stepSize, y));
+          vertices.add(Offset(x, y + stepSize));
+
+          vertices.add(Offset(x + stepSize, y));
+          vertices.add(Offset(x + stepSize, y + stepSize));
+          vertices.add(Offset(x, y + stepSize));
+        }
+      }
+    }
+    return vertices;
+  }
+
   List<LineSegment> _sortSegmentsSequentially(List<LineSegment> segments) {
     if (segments.isEmpty) return [];
     final sorted = <LineSegment>[];
@@ -404,6 +622,11 @@ class _EquationPainterState extends State<EquationPainter>
       final w = _lastSize!.width;
       final h = _lastSize!.height;
 
+      // Update scale
+      if (details.scale != 1.0) {
+        _currentScale = (_currentScale / details.scale).clamp(0.001, 10000.0);
+      }
+
       // Pan translation (screen space mapped to [-1, 1] alignment range)
       final dx = details.focalPointDelta.dx / (w / 2);
       final dy = details.focalPointDelta.dy / (h / 2);
@@ -412,6 +635,138 @@ class _EquationPainterState extends State<EquationPainter>
 
       _calculateAllSegments(w, h);
     });
+  }
+
+  void _onTapDown(TapDownDetails details) {
+    if (widget.onPointTapped == null || _allPoints == null || _lastSize == null)
+      return;
+
+    final Size size = _lastSize!;
+    final double originX = (1 + _currentTranslation.dx) * size.width / 2;
+    final double originY = (1 + _currentTranslation.dy) * size.height / 2;
+    final double pixelsPerUnit = 40.0 / _currentScale;
+
+    // Check distance in pixels from the tap point to all line segments.
+    final tapPos = details.localPosition;
+    const double threshold = 12.0; // max pixels away
+
+    for (int i = 0; i < widget.equations.length; i++) {
+      final config = widget.equations[i];
+      if (config.inequality != InequalityType.none) continue;
+
+      final points = _allPoints![i];
+      // For equality (lines), points has 4 floats per segment (x1, y1, x2, y2)
+      if (points.length % 4 == 0) {
+        for (int j = 0; j < points.length; j += 4) {
+          final p1 = Offset(points[j], points[j + 1]);
+          final p2 = Offset(points[j + 2], points[j + 3]);
+
+          final dist = _distToSegment(tapPos, p1, p2);
+          if (dist < threshold) {
+            final t = _projectionFactor(tapPos, p1, p2);
+            final closestP = Offset(
+              p1.dx + t * (p2.dx - p1.dx),
+              p1.dy + t * (p2.dy - p1.dy),
+            );
+            final mathX = (closestP.dx - originX) / pixelsPerUnit;
+            final mathY = (originY - closestP.dy) / pixelsPerUnit;
+
+            widget.onPointTapped!(mathX, mathY, config);
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  void _onHover(PointerHoverEvent event) {
+    if (_allPoints == null || _lastSize == null) return;
+
+    final Size size = _lastSize!;
+    final double originX = (1 + _currentTranslation.dx) * size.width / 2;
+    final double originY = (1 + _currentTranslation.dy) * size.height / 2;
+    final double pixelsPerUnit = 40.0 / _currentScale;
+
+    final hoverPos = event.localPosition;
+    const double threshold = 12.0;
+
+    Offset? bestCanvasPos;
+    double? bestMathX;
+    double? bestMathY;
+    EquationConfig? bestConfig;
+    double minDistance = double.infinity;
+
+    for (int i = 0; i < widget.equations.length; i++) {
+      final config = widget.equations[i];
+      if (config.inequality != InequalityType.none) continue;
+
+      final points = _allPoints![i];
+      if (points.length % 4 == 0) {
+        for (int j = 0; j < points.length; j += 4) {
+          final p1 = Offset(points[j], points[j + 1]);
+          final p2 = Offset(points[j + 2], points[j + 3]);
+
+          final dist = _distToSegment(hoverPos, p1, p2);
+          if (dist < threshold && dist < minDistance) {
+            final t = _projectionFactor(hoverPos, p1, p2);
+            final closestP = Offset(
+              p1.dx + t * (p2.dx - p1.dx),
+              p1.dy + t * (p2.dy - p1.dy),
+            );
+            bestCanvasPos = closestP;
+            bestMathX = (closestP.dx - originX) / pixelsPerUnit;
+            bestMathY = (originY - closestP.dy) / pixelsPerUnit;
+            bestConfig = config;
+            minDistance = dist;
+          }
+        }
+      }
+    }
+
+    if (bestCanvasPos != _hoverPos ||
+        bestMathX != _hoverMathX ||
+        bestMathY != _hoverMathY) {
+      if (mounted) {
+        setState(() {
+          _hoverPos = bestCanvasPos;
+          _hoverMathX = bestMathX;
+          _hoverMathY = bestMathY;
+          _hoverConfig = bestConfig;
+        });
+      }
+    }
+  }
+
+  void _onHoverExit(PointerExitEvent event) {
+    if (mounted && _hoverPos != null) {
+      setState(() {
+        _hoverPos = null;
+        _hoverMathX = null;
+        _hoverMathY = null;
+        _hoverConfig = null;
+      });
+    }
+  }
+
+  double _distToSegment(Offset p, Offset a, Offset b) {
+    final l2 = (a - b).distanceSquared;
+    if (l2 == 0) return (p - a).distance;
+    final t =
+        (((p.dx - a.dx) * (b.dx - a.dx) + (p.dy - a.dy) * (b.dy - a.dy)) / l2)
+            .clamp(0.0, 1.0);
+    final projection = Offset(
+      a.dx + t * (b.dx - a.dx),
+      a.dy + t * (b.dy - a.dy),
+    );
+    return (p - projection).distance;
+  }
+
+  double _projectionFactor(Offset p, Offset a, Offset b) {
+    final l2 = (a - b).distanceSquared;
+    if (l2 == 0) return 0.0;
+    return (((p.dx - a.dx) * (b.dx - a.dx) + (p.dy - a.dy) * (b.dy - a.dy)) /
+            l2)
+        .clamp(0.0, 1.0);
   }
 
   void _onScaleEnd(ScaleEndDetails details) {
@@ -460,122 +815,165 @@ class _EquationPainterState extends State<EquationPainter>
         Widget content = SizedBox(
           width: actualWidth,
           height: actualHeight,
-          child: widget.showHint
-              ? SingleChildScrollView(
-                  physics: const NeverScrollableScrollPhysics(),
-                  child: Column(
-                    children: [
-                      if (widget.showHint)
-                        Positioned(
-                          top: 8,
-                          left: 16,
-                          right: 16,
-                          child: Text(
-                            "if you didn't see any equation draw, try giving large value to unitsPerSquare (e.g. 100)\n",
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Theme.of(context).hintColor,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      Stack(
+          child: Stack(
+            children: [
+              widget.showHint
+                  ? SingleChildScrollView(
+                      physics: const NeverScrollableScrollPhysics(),
+                      child: Column(
                         children: [
-                          if (widget.showGrid || widget.showAxis)
-                            RepaintBoundary(
-                              child: CustomPaint(
-                                size: currentSize,
-                                painter: BackgroundPainter(
-                                  showGrid: widget.showGrid,
-                                  showAxis: widget.showAxis,
-                                  gridColor: widget.gridColor,
-                                  gridStrokeWidth: widget.gridStrokeWidth,
-                                  alignment: Alignment(
-                                    _currentTranslation.dx,
-                                    _currentTranslation.dy,
-                                  ),
-                                  showAxisLabel: widget.showAxisLabel,
-                                  unitsPerSquare: _currentScale,
-                                  labelColor: widget.labelColor,
-                                  xAxisColor: widget.xAxisColor,
-                                  yAxisColor: widget.yAxisColor,
+                          if (widget.showHint)
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                top: 8,
+                                left: 16,
+                                right: 16,
+                              ),
+                              child: Text(
+                                "if you didn't see any equation draw, try giving large value to unitsPerSquare (e.g. 100)\n",
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Theme.of(context).hintColor,
+                                  fontSize: 12,
                                 ),
                               ),
                             ),
-                          AnimatedBuilder(
-                            animation: _controller,
-                            builder: (context, _) {
-                              return CustomPaint(
-                                size: currentSize,
-                                painter: GraphPainter(
-                                  allPoints: _allPoints ?? [],
-                                  equations: widget.equations,
-                                  // Draw fully immediately if user panning/zoomed
-                                  animationProgress: _isInteracting
-                                      ? 1.0
-                                      : _controller.value,
+                          Stack(
+                            children: [
+                              if (widget.showGrid || widget.showAxis)
+                                RepaintBoundary(
+                                  child: CustomPaint(
+                                    size: currentSize,
+                                    painter: BackgroundPainter(
+                                      showGrid: widget.showGrid,
+                                      showAxis: widget.showAxis,
+                                      gridColor: widget.gridColor,
+                                      gridStrokeWidth: widget.gridStrokeWidth,
+                                      alignment: Alignment(
+                                        _currentTranslation.dx,
+                                        _currentTranslation.dy,
+                                      ),
+                                      showAxisLabel: widget.showAxisLabel,
+                                      unitsPerSquare: _currentScale,
+                                      labelColor: widget.labelColor,
+                                      xAxisColor: widget.xAxisColor,
+                                      yAxisColor: widget.yAxisColor,
+                                    ),
+                                  ),
                                 ),
-                              );
-                            },
+                              AnimatedBuilder(
+                                animation: _controller,
+                                builder: (context, _) {
+                                  return CustomPaint(
+                                    size: currentSize,
+                                    painter: GraphPainter(
+                                      allPoints: _allPoints ?? [],
+                                      equations: widget.equations,
+                                      // Draw fully immediately if user panning/zoomed
+                                      animationProgress: _isInteracting
+                                          ? 1.0
+                                          : _controller.value,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                )
-              : Stack(
-                  children: [
-                    if (widget.showGrid || widget.showAxis)
-                      RepaintBoundary(
-                        child: CustomPaint(
-                          size: currentSize,
-                          painter: BackgroundPainter(
-                            showGrid: widget.showGrid,
-                            showAxis: widget.showAxis,
-                            gridColor: widget.gridColor,
-                            gridStrokeWidth: widget.gridStrokeWidth,
-                            alignment: Alignment(
-                              _currentTranslation.dx,
-                              _currentTranslation.dy,
+                    )
+                  : Stack(
+                      children: [
+                        if (widget.showGrid || widget.showAxis)
+                          RepaintBoundary(
+                            child: CustomPaint(
+                              size: currentSize,
+                              painter: BackgroundPainter(
+                                showGrid: widget.showGrid,
+                                showAxis: widget.showAxis,
+                                gridColor: widget.gridColor,
+                                gridStrokeWidth: widget.gridStrokeWidth,
+                                alignment: Alignment(
+                                  _currentTranslation.dx,
+                                  _currentTranslation.dy,
+                                ),
+                                showAxisLabel: widget.showAxisLabel,
+                                unitsPerSquare: _currentScale,
+                                labelColor: widget.labelColor,
+                                xAxisColor: widget.xAxisColor,
+                                yAxisColor: widget.yAxisColor,
+                              ),
                             ),
-                            showAxisLabel: widget.showAxisLabel,
-                            unitsPerSquare: _currentScale,
-                            labelColor: widget.labelColor,
-                            xAxisColor: widget.xAxisColor,
-                            yAxisColor: widget.yAxisColor,
                           ),
+                        AnimatedBuilder(
+                          animation: _controller,
+                          builder: (context, _) {
+                            return CustomPaint(
+                              size: currentSize,
+                              painter: GraphPainter(
+                                allPoints: _allPoints ?? [],
+                                equations: widget.equations,
+                                // Draw fully immediately if user panning/zoomed
+                                animationProgress: _isInteracting
+                                    ? 1.0
+                                    : _controller.value,
+                              ),
+                            );
+                          },
                         ),
-                      ),
-                    AnimatedBuilder(
-                      animation: _controller,
-                      builder: (context, _) {
-                        return CustomPaint(
-                          size: currentSize,
-                          painter: GraphPainter(
-                            allPoints: _allPoints ?? [],
-                            equations: widget.equations,
-                            // Draw fully immediately if user panning/zoomed
-                            animationProgress: _isInteracting
-                                ? 1.0
-                                : _controller.value,
-                          ),
-                        );
-                      },
+                      ],
                     ),
-                  ],
+              if (_hoverPos != null)
+                Positioned(
+                  left: _hoverPos!.dx + 15,
+                  top: _hoverPos!.dy + 15,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black87,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: _hoverConfig?.color ?? Colors.white54,
+                      ),
+                    ),
+                    child: Text(
+                      _hoverConfig?.type == EquationType.polar
+                          ? "r: ${_hoverMathX?.toStringAsFixed(2)}, ?: ${_hoverMathY?.toStringAsFixed(2)}"
+                          : "x: ${_hoverMathX?.toStringAsFixed(2)}, y: ${_hoverMathY?.toStringAsFixed(2)}",
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                    ),
+                  ),
                 ),
+            ],
+          ),
         );
 
         if (widget.interactive) {
-          return GestureDetector(
-            onScaleStart: _onScaleStart,
-            onScaleUpdate: _onScaleUpdate,
-            onScaleEnd: _onScaleEnd,
-            behavior: HitTestBehavior.opaque,
-            child: ClipRect(child: content),
+          return MouseRegion(
+            onHover: _onHover,
+            onExit: _onHoverExit,
+            child: GestureDetector(
+              onScaleStart: _onScaleStart,
+              onScaleUpdate: _onScaleUpdate,
+              onScaleEnd: _onScaleEnd,
+              onTapDown: _onTapDown,
+              behavior: HitTestBehavior.opaque,
+              child: ClipRect(child: content),
+            ),
           );
         } else {
-          return ClipRect(child: content);
+          return MouseRegion(
+            onHover: _onHover,
+            onExit: _onHoverExit,
+            child: GestureDetector(
+              onTapDown: _onTapDown,
+              behavior: HitTestBehavior.opaque,
+              child: ClipRect(child: content),
+            ),
+          );
         }
       },
     );

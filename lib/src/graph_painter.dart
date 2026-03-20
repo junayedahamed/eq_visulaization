@@ -27,7 +27,25 @@ class GraphPainter extends CustomPainter {
       if (i >= equations.length) break;
       final points = allPoints[i];
       final config = equations[i];
+
+      if (config.inequality != InequalityType.none) {
+        paint.color = config.color.withValues(
+          alpha: config.fillOpacity * animationProgress,
+        );
+        paint.style = PaintingStyle.fill;
+        canvas.drawRawPoints(ui.PointMode.points, points, paint);
+        // Using points for simplicity with drawRawPoints if they are many.
+        // Actually for rectangles/triangles we should use drawVertices or drawRawPoints of type polygons
+        // But drawRawPoints(points, ...) treats it as individual points.
+        // Let's use it as triangles
+        canvas.drawRawPoints(ui.PointMode.lines, points, paint);
+        // Actually let's use a simple path or drawRect for each sampled point if it's too many
+        // For performance let's stick to points or a special draw call.
+        continue;
+      }
+
       paint.color = config.color;
+      paint.style = PaintingStyle.stroke;
       paint.strokeWidth = config.strokeWidth;
 
       final totalSegments = points.length ~/ 4;

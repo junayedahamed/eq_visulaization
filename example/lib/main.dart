@@ -28,374 +28,195 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-// this is input taking by textfield in equation visualizer page
-// class EquationVisualizerPage extends StatefulWidget {
-//   const EquationVisualizerPage({super.key});
 
-//   @override
-//   State<EquationVisualizerPage> createState() => _EquationVisualizerPageState();
-// }
-
-// class _EquationVisualizerPageState extends State<EquationVisualizerPage> {
-//   final TextEditingController _equationController = TextEditingController();
-//   final TextEditingController _minXController = TextEditingController();
-//   final TextEditingController _maxXController = TextEditingController();
-//   final TextEditingController _minYController = TextEditingController();
-//   final TextEditingController _maxYController = TextEditingController();
-
-//   // FIX BUG-14: _activeConfig starts null — graph shows "enter equation" hint initially
-//   EquationConfig? _activeConfig;
-
-//   @override
-//   void dispose() {
-//     _equationController.dispose();
-//     _minXController.dispose();
-//     _maxXController.dispose();
-//     _minYController.dispose();
-//     _maxYController.dispose();
-//     super.dispose();
-//   }
-
-//   void _updateGraph({bool showErrors = true}) {
-//     final equation = _equationController.text.trim();
-
-//     // Clear graph when the field is empty
-//     if (equation.isEmpty) {
-//       setState(() {
-//         _activeConfig = null;
-//       });
-//       return;
-//     }
-
-//     final fn = EquationParser.parseOrNull(equation);
-//     if (fn == null) {
-//       if (showErrors && mounted) {
-//         ScaffoldMessenger.of(context).showSnackBar(
-//           SnackBar(
-//             content: Text(
-//               'Invalid equation: "$equation"\nCheck syntax (e.g. x^2 + y^2 - 100)',
-//               style: const TextStyle(fontFamily: 'monospace'),
-//             ),
-//             backgroundColor: Colors.red.shade700,
-//             behavior: SnackBarBehavior.floating,
-//             duration: const Duration(seconds: 4),
-//           ),
-//         );
-//       }
-//       return;
-//     }
-
-//     double? parseLimit(String text) {
-//       if (text.trim().isEmpty) return null;
-//       return double.tryParse(text.trim());
-//     }
-
-//     setState(() {
-//       _activeConfig = EquationConfig(
-//         function: fn,
-//         color: const Color(0xFF6366F1),
-//         strokeWidth: 3.0,
-//         animationType: AnimationType.radial,
-//         minX: parseLimit(_minXController.text),
-//         maxX: parseLimit(_maxXController.text),
-//         minY: parseLimit(_minYController.text),
-//         maxY: parseLimit(_maxYController.text),
-//       );
-//     });
-//   }
-
-//   Widget _buildLimitField(String label, TextEditingController controller) {
-//     return Expanded(
-//       child: TextField(
-//         controller: controller,
-//         keyboardType: const TextInputType.numberWithOptions(
-//           signed: true,
-//           decimal: true,
-//         ),
-//         style: const TextStyle(
-//           fontSize: 14,
-//           color: Colors.white,
-//           fontFamily: 'monospace',
-//         ),
-//         decoration: InputDecoration(
-//           labelText: label,
-//           labelStyle: const TextStyle(color: Colors.white38, fontSize: 12),
-//           filled: true,
-//           fillColor: Colors.black.withAlpha(50),
-//           isDense: true,
-//           contentPadding: const EdgeInsets.symmetric(
-//             horizontal: 12,
-//             vertical: 10,
-//           ),
-//           border: OutlineInputBorder(
-//             borderRadius: BorderRadius.circular(12),
-//             borderSide: BorderSide.none,
-//           ),
-//         ),
-//         onChanged: (_) => _updateGraph(showErrors: false),
-//         onSubmitted: (_) => _updateGraph(),
-//       ),
-//     );
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       body: Container(
-//         decoration: const BoxDecoration(
-//           gradient: LinearGradient(
-//             begin: Alignment.topLeft,
-//             end: Alignment.bottomRight,
-//             colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-//           ),
-//         ),
-//         child: SafeArea(
-//           child: Column(
-//             children: [
-//               // Header
-//               Padding(
-//                 padding: const EdgeInsets.all(24.0),
-//                 child: Row(
-//                   children: [
-//                     Container(
-//                       padding: const EdgeInsets.all(12),
-//                       decoration: BoxDecoration(
-//                         color: const Color(0xFF6366F1).withAlpha(40),
-//                         borderRadius: BorderRadius.circular(12),
-//                       ),
-//                       child: const Icon(
-//                         Icons.auto_graph_rounded,
-//                         color: Color(0xFF818CF8),
-//                       ),
-//                     ),
-//                     const SizedBox(width: 16),
-//                     const Column(
-//                       crossAxisAlignment: CrossAxisAlignment.start,
-//                       children: [
-//                         Text(
-//                           'Implicit Equation',
-//                           style: TextStyle(
-//                             fontSize: 20,
-//                             fontWeight: FontWeight.bold,
-//                           ),
-//                         ),
-//                         Text(
-//                           'Visualizer',
-//                           style: TextStyle(fontSize: 14, color: Colors.white54),
-//                         ),
-//                       ],
-//                     ),
-//                   ],
-//                 ),
-//               ),
-
-//               // Control Panel
-//               Padding(
-//                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
-//                 child: Container(
-//                   padding: const EdgeInsets.all(20),
-//                   decoration: BoxDecoration(
-//                     color: Colors.white.withAlpha(15),
-//                     borderRadius: BorderRadius.circular(24),
-//                     border: Border.all(color: Colors.white10),
-//                   ),
-//                   child: Column(
-//                     crossAxisAlignment: CrossAxisAlignment.stretch,
-//                     children: [
-//                       const Text(
-//                         'Equation  f(x, y) = 0',
-//                         style: TextStyle(
-//                           fontSize: 12,
-//                           fontWeight: FontWeight.bold,
-//                           color: Colors.white38,
-//                         ),
-//                       ),
-//                       const SizedBox(height: 4),
-//                       // Example hint
-//                       const Text(
-//                         'e.g.  x^2 + y^2 - 2500  •  sin(x) - y  •  2x + y - 10',
-//                         style: TextStyle(fontSize: 10, color: Colors.white24),
-//                       ),
-//                       const SizedBox(height: 8),
-//                       TextField(
-//                         controller: _equationController,
-//                         maxLines: 3,
-//                         minLines: 1,
-//                         style: const TextStyle(
-//                           fontSize: 16,
-//                           color: Colors.white,
-//                           fontFamily: 'monospace',
-//                         ),
-//                         decoration: InputDecoration(
-//                           hintText: 'Enter equation, e.g.  x^2 + y^2 - 2500',
-//                           hintStyle: const TextStyle(color: Colors.white24),
-//                           filled: true,
-//                           fillColor: Colors.black.withAlpha(50),
-//                           border: OutlineInputBorder(
-//                             borderRadius: BorderRadius.circular(16),
-//                             borderSide: BorderSide.none,
-//                           ),
-//                           // Clear button
-//                           suffixIcon: _equationController.text.isNotEmpty
-//                               ? IconButton(
-//                                   icon: const Icon(
-//                                     Icons.clear,
-//                                     color: Colors.white38,
-//                                   ),
-//                                   onPressed: () {
-//                                     _equationController.clear();
-//                                     _updateGraph();
-//                                   },
-//                                 )
-//                               : null,
-//                         ),
-//                         onChanged: (_) {
-//                           setState(() {});
-//                           _updateGraph(showErrors: false);
-//                         },
-//                         onSubmitted: (_) => _updateGraph(),
-//                       ),
-//                       const SizedBox(height: 12),
-//                       Row(
-//                         children: [
-//                           _buildLimitField('Min X', _minXController),
-//                           const SizedBox(width: 8),
-//                           _buildLimitField('Max X', _maxXController),
-//                           const SizedBox(width: 8),
-//                           _buildLimitField('Min Y', _minYController),
-//                           const SizedBox(width: 8),
-//                           _buildLimitField('Max Y', _maxYController),
-//                         ],
-//                       ),
-//                       const SizedBox(height: 16),
-//                       ElevatedButton(
-//                         onPressed: _updateGraph,
-//                         style: ElevatedButton.styleFrom(
-//                           backgroundColor: const Color(0xFF6366F1),
-//                           foregroundColor: Colors.white,
-//                           padding: const EdgeInsets.symmetric(vertical: 16),
-//                           shape: RoundedRectangleBorder(
-//                             borderRadius: BorderRadius.circular(16),
-//                           ),
-//                         ),
-//                         child: const Text(
-//                           'Show Graph',
-//                           style: TextStyle(
-//                             fontSize: 16,
-//                             fontWeight: FontWeight.bold,
-//                           ),
-//                         ),
-//                       ),
-//                     ],
-//                   ),
-//                 ),
-//               ),
-
-//               const SizedBox(height: 24),
-
-//               // Graph
-//               Expanded(
-//                 child: Padding(
-//                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-//                   child: Container(
-//                     decoration: BoxDecoration(
-//                       borderRadius: BorderRadius.circular(32),
-//                       boxShadow: [
-//                         BoxShadow(
-//                           color: Colors.black.withAlpha(100),
-//                           blurRadius: 40,
-//                           spreadRadius: 10,
-//                         ),
-//                       ],
-//                     ),
-//                     child: ClipRRect(
-//                       borderRadius: BorderRadius.circular(32),
-//                       child: Container(
-//                         color: const Color(0xFF0F172A),
-//                         child: _activeConfig == null
-//                             ? Center(
-//                                 child: Column(
-//                                   mainAxisAlignment: MainAxisAlignment.center,
-//                                   children: [
-//                                     Icon(
-//                                       Icons.functions_rounded,
-//                                       size: 48,
-//                                       color: Colors.white10,
-//                                     ),
-//                                     const SizedBox(height: 12),
-//                                     const Text(
-//                                       'Enter an equation above and tap "Show Graph"',
-//                                       style: TextStyle(color: Colors.white24),
-//                                       textAlign: TextAlign.center,
-//                                     ),
-//                                   ],
-//                                 ),
-//                               )
-//                             // FIX BUG-12: Use 0 (fills constraints) instead of MediaQuery
-//                             // so the LayoutBuilder inside EquationPainter correctly
-//                             // receives the available space from Expanded.
-//                             : EquationPainter(
-//                                 width: 0, // 0 → fills LayoutBuilder constraint
-//                                 height: 0, // 0 → fills LayoutBuilder constraint
-//                                 unitsPerSquare: 10.0,
-//                                 interactive: false,
-//                                 showGrid: false,
-//                                 showAxis: true,
-//                                 alignment: Alignment.center,
-//                                 showNumbers: true,
-//                                 // FIX BUG-11: Use a visible color on dark background
-//                                 labelColor: Colors.white38,
-//                                 xAxisColor: Colors.white24,
-//                                 yAxisColor: Colors.white24,
-//                                 gridColor: Colors.white.withAlpha(10),
-//                                 equations: [_activeConfig!],
-//                                 animationDuration: const Duration(
-//                                   milliseconds: 1500,
-//                                 ),
-//                                 animate: true,
-//                               ),
-//                       ),
-//                     ),
-//                   ),
-//                 ),
-//               ),
-//             ],
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
-
-class EquationVisualizerPage extends StatelessWidget {
+class EquationVisualizerPage extends StatefulWidget {
   const EquationVisualizerPage({super.key});
+
+  @override
+  State<EquationVisualizerPage> createState() => _EquationVisualizerPageState();
+}
+
+class _EquationVisualizerPageState extends State<EquationVisualizerPage> {
+  int _exampleIndex = 0;
+
+  final List<String> _titles = [
+    'Cartesian Support & Tap',
+    'Polar Coordinate Support',
+    'Inequality Visualization',
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: EquationPainter(
-          // unitsPerSquare: 100,
-          interactive: false,
-          showAxisLabel: true,
-          showHint: false,
-          labelColor: Colors.white,
-          height: 400,
-          width: 400,
-          equations: [
-            EquationConfig(
-              maxX: 300,
-              minX: -300,
-              maxY: 300,
-              minY: -300,
-              function: (x, y) => cos(x / 20) + cos(y / 20) - x / 1000,
-              color: const Color(0xFF6366F1),
-              strokeWidth: 3.0,
-              animationType: AnimationType.radial,
-            ),
-          ],
-        ),
+      appBar: AppBar(
+        title: Text(_titles[_exampleIndex]),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => setState(() {}),
+          ),
+        ],
       ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: SegmentedButton<int>(
+              segments: const [
+                ButtonSegment(
+                  value: 0,
+                  label: Text('Cartesian'),
+                  icon: Icon(Icons.grid_4x4),
+                ),
+                ButtonSegment(
+                  value: 1,
+                  label: Text('Polar'),
+                  icon: Icon(Icons.bubble_chart),
+                ),
+                ButtonSegment(
+                  value: 2,
+                  label: Text('Inequality'),
+                  icon: Icon(Icons.format_color_fill),
+                ),
+              ],
+              selected: {_exampleIndex},
+              onSelectionChanged: (val) =>
+                  setState(() => _exampleIndex = val.first),
+            ),
+          ),
+          Expanded(child: ClipRect(child: _buildExample())),
+          const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Text(
+              'Pinch to zoom, drag to pan. Tap curves to see coordinates.',
+              style: TextStyle(color: Colors.white54, fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExample() {
+    switch (_exampleIndex) {
+      case 0:
+        return _buildCartesianExample();
+      case 1:
+        return _buildPolarExample();
+      case 2:
+        return _buildInequalityExample();
+      default:
+        return const Center(child: Text('Example not found'));
+    }
+  }
+
+  Widget _buildCartesianExample() {
+    return EquationPainter(
+      key: const ValueKey('cartesian'),
+      unitsPerSquare: 10,
+      interactive: true,
+      showGrid: true,
+      showAxis: true,
+      showAxisLabel: true,
+      labelColor: Colors.white70,
+      onPointTapped: (x, y, config) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Tapped: (x: , y: )'),
+            duration: const Duration(seconds: 1),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      },
+      equations: [
+        EquationConfig(
+          function: (x, y) => x * x + y * y - 25,
+          color: Colors.indigoAccent,
+          strokeWidth: 4,
+        ),
+        EquationConfig(
+          inequality: InequalityType.greaterThanOrEqual,
+          maxX: 100,
+          minX: -100,
+          function: (x, y) => sin(x) - y,
+          color: Colors.pinkAccent,
+          strokeWidth: 3,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPolarExample() {
+    return EquationPainter(
+      key: const ValueKey('polar'),
+      unitsPerSquare: 5,
+      interactive: true,
+      showGrid: true,
+      showAxis: true,
+
+      showAxisLabel: true,
+      labelColor: Colors.white70,
+      onPointTapped: (x, y, config) {
+        // final r = sqrt(x * x + y * y);
+        // final theta = atan2(y, x);
+
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Polar: (r: , θ: rad)'),
+            duration: const Duration(seconds: 1),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      },
+      equations: [
+        EquationConfig(
+          inequality: InequalityType.lessThanOrEqual,
+          type: EquationType.polar,
+          function: (r, theta) => tan(theta) - 4 * cos(2 * 600 * r),
+          color: Colors.cyanAccent,
+          strokeWidth: 3,
+          animationType: AnimationType.radial,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInequalityExample() {
+    return EquationPainter(
+      key: const ValueKey('inequality'),
+      unitsPerSquare: 10,
+      interactive: false,
+      showGrid: true,
+      showAxis: true,
+      onPointTapped: (x, y, config) {
+        print(
+          'Tapped point: (x: $x, y: $y) on equation with inequality: ${config.inequality}',
+        );
+      },
+
+      showAxisLabel: true,
+      labelColor: Colors.white70,
+      equations: [
+        EquationConfig(
+          function: (x, y) => y - x,
+          inequality: InequalityType.greaterThanOrEqual,
+          color: Colors.greenAccent,
+          fillOpacity: 0.2,
+        ),
+        // EquationConfig(
+        //   function: (x, y) => 16 - (x * x + y * y),
+        //   inequality: InequalityType.greaterThanOrEqual,
+        //   color: Colors.orangeAccent,
+        //   fillOpacity: 0.3,
+        // ),
+        // EquationConfig(
+        //   function: (x, y) => x * x + y * y - 16,
+        //   color: Colors.orangeAccent,
+        //   strokeWidth: 2,
+        // ),
+      ],
     );
   }
 }
