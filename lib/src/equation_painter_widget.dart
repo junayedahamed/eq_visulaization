@@ -648,7 +648,13 @@ class _EquationPainterState extends State<EquationPainter>
 
     // Check distance in pixels from the tap point to all line segments.
     final tapPos = details.localPosition;
-    const double threshold = 12.0; // max pixels away
+    const double threshold =
+        20.0; // Increased from 12.0 for better touch target
+
+    double minDistance = double.infinity;
+    double? foundMathX;
+    double? foundMathY;
+    EquationConfig? foundConfig;
 
     for (int i = 0; i < widget.equations.length; i++) {
       final config = widget.equations[i];
@@ -662,20 +668,23 @@ class _EquationPainterState extends State<EquationPainter>
           final p2 = Offset(points[j + 2], points[j + 3]);
 
           final dist = _distToSegment(tapPos, p1, p2);
-          if (dist < threshold) {
+          if (dist < threshold && dist < minDistance) {
             final t = _projectionFactor(tapPos, p1, p2);
             final closestP = Offset(
               p1.dx + t * (p2.dx - p1.dx),
               p1.dy + t * (p2.dy - p1.dy),
             );
-            final mathX = (closestP.dx - originX) / pixelsPerUnit;
-            final mathY = (originY - closestP.dy) / pixelsPerUnit;
-
-            widget.onPointTapped!(mathX, mathY, config);
-            return;
+            minDistance = dist;
+            foundMathX = (closestP.dx - originX) / pixelsPerUnit;
+            foundMathY = (originY - closestP.dy) / pixelsPerUnit;
+            foundConfig = config;
           }
         }
       }
+    }
+
+    if (foundConfig != null) {
+      widget.onPointTapped!(foundMathX!, foundMathY!, foundConfig);
     }
   }
 
@@ -820,64 +829,44 @@ class _EquationPainterState extends State<EquationPainter>
               widget.showHint
                   ? SingleChildScrollView(
                       physics: const NeverScrollableScrollPhysics(),
-                      child: Column(
+                      child: Stack(
                         children: [
-                          if (widget.showHint)
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                top: 8,
-                                left: 16,
-                                right: 16,
-                              ),
-                              child: Text(
-                                "if you didn't see any equation draw, try giving large value to unitsPerSquare (e.g. 100)\n",
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Theme.of(context).hintColor,
-                                  fontSize: 12,
+                          if (widget.showGrid || widget.showAxis)
+                            RepaintBoundary(
+                              child: CustomPaint(
+                                size: currentSize,
+                                painter: BackgroundPainter(
+                                  showGrid: widget.showGrid,
+                                  showAxis: widget.showAxis,
+                                  gridColor: widget.gridColor,
+                                  gridStrokeWidth: widget.gridStrokeWidth,
+                                  alignment: Alignment(
+                                    _currentTranslation.dx,
+                                    _currentTranslation.dy,
+                                  ),
+                                  showAxisLabel: widget.showAxisLabel,
+                                  unitsPerSquare: _currentScale,
+                                  labelColor: widget.labelColor,
+                                  xAxisColor: widget.xAxisColor,
+                                  yAxisColor: widget.yAxisColor,
                                 ),
                               ),
                             ),
-                          Stack(
-                            children: [
-                              if (widget.showGrid || widget.showAxis)
-                                RepaintBoundary(
-                                  child: CustomPaint(
-                                    size: currentSize,
-                                    painter: BackgroundPainter(
-                                      showGrid: widget.showGrid,
-                                      showAxis: widget.showAxis,
-                                      gridColor: widget.gridColor,
-                                      gridStrokeWidth: widget.gridStrokeWidth,
-                                      alignment: Alignment(
-                                        _currentTranslation.dx,
-                                        _currentTranslation.dy,
-                                      ),
-                                      showAxisLabel: widget.showAxisLabel,
-                                      unitsPerSquare: _currentScale,
-                                      labelColor: widget.labelColor,
-                                      xAxisColor: widget.xAxisColor,
-                                      yAxisColor: widget.yAxisColor,
-                                    ),
-                                  ),
+                          AnimatedBuilder(
+                            animation: _controller,
+                            builder: (context, _) {
+                              return CustomPaint(
+                                size: currentSize,
+                                painter: GraphPainter(
+                                  allPoints: _allPoints ?? [],
+                                  equations: widget.equations,
+                                  // Draw fully immediately if user panning/zoomed
+                                  animationProgress: _isInteracting
+                                      ? 1.0
+                                      : _controller.value,
                                 ),
-                              AnimatedBuilder(
-                                animation: _controller,
-                                builder: (context, _) {
-                                  return CustomPaint(
-                                    size: currentSize,
-                                    painter: GraphPainter(
-                                      allPoints: _allPoints ?? [],
-                                      equations: widget.equations,
-                                      // Draw fully immediately if user panning/zoomed
-                                      animationProgress: _isInteracting
-                                          ? 1.0
-                                          : _controller.value,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -941,7 +930,7 @@ class _EquationPainterState extends State<EquationPainter>
                     ),
                     child: Text(
                       _hoverConfig?.type == EquationType.polar
-                          ? "r: ${_hoverMathX?.toStringAsFixed(2)}, ?: ${_hoverMathY?.toStringAsFixed(2)}"
+                          ? "r: ${_hoverMathX?.toStringAsFixed(2)}, θ: ${_hoverMathY?.toStringAsFixed(2)}"
                           : "x: ${_hoverMathX?.toStringAsFixed(2)}, y: ${_hoverMathY?.toStringAsFixed(2)}",
                       style: const TextStyle(color: Colors.white, fontSize: 12),
                     ),

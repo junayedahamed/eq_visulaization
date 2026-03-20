@@ -115,6 +115,7 @@ class _EquationVisualizerPageState extends State<EquationVisualizerPage> {
       key: const ValueKey('cartesian'),
       unitsPerSquare: 10,
       interactive: true,
+      showHint: false,
       showGrid: true,
       showAxis: true,
       showAxisLabel: true,
@@ -123,7 +124,9 @@ class _EquationVisualizerPageState extends State<EquationVisualizerPage> {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Tapped: (x: , y: )'),
+            content: Text(
+              'Tapped: (x: $x, y: $y) on equation with type: ${config.type}',
+            ),
             duration: const Duration(seconds: 1),
             behavior: SnackBarBehavior.floating,
           ),
@@ -136,7 +139,7 @@ class _EquationVisualizerPageState extends State<EquationVisualizerPage> {
           strokeWidth: 4,
         ),
         EquationConfig(
-          inequality: InequalityType.greaterThanOrEqual,
+          inequality: InequalityType.none,
           maxX: 100,
           minX: -100,
           function: (x, y) => sin(x) - y,
