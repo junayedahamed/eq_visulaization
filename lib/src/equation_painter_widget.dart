@@ -84,9 +84,9 @@ class EquationPainter extends StatefulWidget {
     this.alignment = Alignment.center,
     this.showAxisLabel = true,
     this.unitsPerSquare = 100.0,
-    this.labelColor = Colors.black54,
-    this.xAxisColor = Colors.black54,
-    this.yAxisColor = Colors.black54,
+    this.labelColor = Colors.white70,
+    this.xAxisColor = Colors.red,
+    this.yAxisColor = Colors.blue,
     this.interactive = true, // Enabled by default
     this.showHint = true,
     this.onPointTapped,
