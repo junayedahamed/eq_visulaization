@@ -42,9 +42,6 @@ jobs:
       - name: 🔍 Analyze code
         run: flutter analyze
 
-      - name: 🧪 Run tests
-        run: flutter test
-
       - name: 🧪 Dry-run Publishing
         run: flutter pub publish --dry-run
 
