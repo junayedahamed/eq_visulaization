@@ -1,3 +1,13 @@
+## 0.1.0+3
+
+* Added `EquationParser.parseOrNull` for safer equation parsing with error feedback.
+* Refactored `example` to support dynamic equation entry, custom $x/y$ range limits, and inequality type selection.
+* Removed redundant `showHint` parameter and simplified `EquationPainter` internal layout.
+* Updated default $y$-axis color to match $x$-axis (red).
+* Improved code robustness by handling uninitialized state in example app.
+* On hover, display equation details in a tooltip for better user experience.
+
+
 ## 0.1.0+1
 
 * Renamed `EquationPainterWidget` to `EquationPainter` for better clarity and ease of use.

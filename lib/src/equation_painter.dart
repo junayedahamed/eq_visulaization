@@ -63,9 +63,6 @@ class EquationPainter extends StatefulWidget {
   /// Whether to enable interactive pan and zoom gestures.
   final bool interactive;
 
-  /// Whether to show a hint when no equations are visible.
-  final bool showHint;
-
   /// Callback when a point on a curve is tapped.
   final void Function(double x, double y, EquationConfig config)? onPointTapped;
 
@@ -86,9 +83,9 @@ class EquationPainter extends StatefulWidget {
     this.unitsPerSquare = 100.0,
     this.labelColor = Colors.white70,
     this.xAxisColor = Colors.red,
-    this.yAxisColor = Colors.blue,
+    this.yAxisColor = Colors.red,
     this.interactive = true, // Enabled by default
-    this.showHint = true,
+
     this.onPointTapped,
   });
 
@@ -829,92 +826,47 @@ class _EquationPainterState extends State<EquationPainter>
           height: actualHeight,
           child: Stack(
             children: [
-              widget.showHint
-                  ? SingleChildScrollView(
-                      physics: const NeverScrollableScrollPhysics(),
-                      child: Stack(
-                        children: [
-                          if (widget.showGrid || widget.showAxis)
-                            RepaintBoundary(
-                              child: CustomPaint(
-                                size: currentSize,
-                                painter: BackgroundPainter(
-                                  showGrid: widget.showGrid,
-                                  showAxis: widget.showAxis,
-                                  gridColor: widget.gridColor,
-                                  gridStrokeWidth: widget.gridStrokeWidth,
-                                  alignment: Alignment(
-                                    _currentTranslation.dx,
-                                    _currentTranslation.dy,
-                                  ),
-                                  showAxisLabel: widget.showAxisLabel,
-                                  unitsPerSquare: _currentScale,
-                                  labelColor: widget.labelColor,
-                                  xAxisColor: widget.xAxisColor,
-                                  yAxisColor: widget.yAxisColor,
-                                ),
-                              ),
-                            ),
-                          AnimatedBuilder(
-                            animation: _controller,
-                            builder: (context, _) {
-                              return CustomPaint(
-                                size: currentSize,
-                                painter: GraphPainter(
-                                  allPoints: _allPoints ?? [],
-                                  equations: widget.equations,
-                                  // Draw fully immediately if user panning/zoomed
-                                  animationProgress: _isInteracting
-                                      ? 1.0
-                                      : _controller.value,
-                                ),
-                              );
-                            },
+              Stack(
+                children: [
+                  if (widget.showGrid || widget.showAxis)
+                    RepaintBoundary(
+                      child: CustomPaint(
+                        size: currentSize,
+                        painter: BackgroundPainter(
+                          showGrid: widget.showGrid,
+                          showAxis: widget.showAxis,
+                          gridColor: widget.gridColor,
+                          gridStrokeWidth: widget.gridStrokeWidth,
+                          alignment: Alignment(
+                            _currentTranslation.dx,
+                            _currentTranslation.dy,
                           ),
-                        ],
-                      ),
-                    )
-                  : Stack(
-                      children: [
-                        if (widget.showGrid || widget.showAxis)
-                          RepaintBoundary(
-                            child: CustomPaint(
-                              size: currentSize,
-                              painter: BackgroundPainter(
-                                showGrid: widget.showGrid,
-                                showAxis: widget.showAxis,
-                                gridColor: widget.gridColor,
-                                gridStrokeWidth: widget.gridStrokeWidth,
-                                alignment: Alignment(
-                                  _currentTranslation.dx,
-                                  _currentTranslation.dy,
-                                ),
-                                showAxisLabel: widget.showAxisLabel,
-                                unitsPerSquare: _currentScale,
-                                labelColor: widget.labelColor,
-                                xAxisColor: widget.xAxisColor,
-                                yAxisColor: widget.yAxisColor,
-                              ),
-                            ),
-                          ),
-                        AnimatedBuilder(
-                          animation: _controller,
-                          builder: (context, _) {
-                            return CustomPaint(
-                              size: currentSize,
-                              painter: GraphPainter(
-                                allPoints: _allPoints ?? [],
-                                equations: widget.equations,
-                                // Draw fully immediately if user panning/zoomed
-                                animationProgress: _isInteracting
-                                    ? 1.0
-                                    : _controller.value,
-                              ),
-                            );
-                          },
+                          showAxisLabel: widget.showAxisLabel,
+                          unitsPerSquare: _currentScale,
+                          labelColor: widget.labelColor,
+                          xAxisColor: widget.xAxisColor,
+                          yAxisColor: widget.yAxisColor,
                         ),
-                      ],
+                      ),
                     ),
+                  AnimatedBuilder(
+                    animation: _controller,
+                    builder: (context, _) {
+                      return CustomPaint(
+                        size: currentSize,
+                        painter: GraphPainter(
+                          allPoints: _allPoints ?? [],
+                          equations: widget.equations,
+                          // Draw fully immediately if user panning/zoomed
+                          animationProgress: _isInteracting
+                              ? 1.0
+                              : _controller.value,
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
               if (_hoverPos != null)
                 Positioned(
                   left: _hoverPos!.dx + 15,

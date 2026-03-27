@@ -37,208 +37,163 @@ class EquationVisualizerPage extends StatefulWidget {
 }
 
 class _EquationVisualizerPageState extends State<EquationVisualizerPage> {
-  int _exampleIndex = 0;
+  late double Function(double, double) function;
 
-  final List<String> _titles = [
-    'Cartesian Support & Tap',
-    'Polar Coordinate Support',
-    'Inequality Visualization',
-  ];
+  @override
+  void initState() {
+    super.initState();
+    function = (x, y) => 0;
+  }
+
+  final TextEditingController _controller = TextEditingController();
+  final TextEditingController _controllerMaxX = TextEditingController();
+  final TextEditingController _controllerMinX = TextEditingController();
+  final TextEditingController _controllerMaxY = TextEditingController();
+  final TextEditingController _controllerMinY = TextEditingController();
+
+  bool isInequality = false;
+  InequalityType _inequalityType = InequalityType.none;
+  double? maxX, minX, maxY, minY;
+
+  void addLimitValues() {
+    maxX = double.tryParse(_controllerMaxX.text);
+    minX = double.tryParse(_controllerMinX.text);
+    maxY = double.tryParse(_controllerMaxY.text);
+    minY = double.tryParse(_controllerMinY.text);
+    setState(() {});
+  }
+
+  void parseAndShow(String value) {
+    final eq = EquationParser.parseOrNull(value);
+    addLimitValues();
+    if (eq != null) {
+      function = eq;
+      setState(() {});
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_titles[_exampleIndex]),
+        title: Text('Equation Visualizer'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => setState(() {}),
+          Checkbox(
+            value: isInequality,
+            onChanged: (value) {
+              setState(() {
+                isInequality = !isInequality;
+                if (!isInequality) {
+                  _inequalityType = InequalityType.none;
+                }
+              });
+            },
           ),
+
+          isInequality
+              ? DropdownButton(
+                  value: _inequalityType,
+                  items: InequalityType.values
+                      .map(
+                        (type) => DropdownMenuItem(
+                          value: type,
+                          child: Text(type.toString().split('.').last),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _inequalityType = value!;
+                    });
+                  },
+                )
+              : SizedBox(),
         ],
       ),
-      // body: Column(
-      //   children: [
-      //     Padding(
-      //       padding: const EdgeInsets.all(16.0),
-      //       child: SegmentedButton<int>(
-      //         segments: const [
-      //           ButtonSegment(
-      //             value: 0,
-      //             label: Text('Cartesian'),
-      //             icon: Icon(Icons.grid_4x4),
-      //           ),
-      //           ButtonSegment(
-      //             value: 1,
-      //             label: Text('Polar'),
-      //             icon: Icon(Icons.bubble_chart),
-      //           ),
-      //           ButtonSegment(
-      //             value: 2,
-      //             label: Text('Inequality'),
-      //             icon: Icon(Icons.format_color_fill),
-      //           ),
-      //         ],
-      //         selected: {_exampleIndex},
-      //         onSelectionChanged: (val) =>
-      //             setState(() => _exampleIndex = val.first),
-      //       ),
-      //     ),
-      //     Expanded(child: ClipRect(child: _buildExample())),
-      //     const Padding(
-      //       padding: EdgeInsets.all(16.0),
-      //       child: Text(
-      //         'Pinch to zoom, drag to pan. Tap curves to see coordinates.',
-      //         style: TextStyle(color: Colors.white54, fontSize: 12),
-      //       ),
-      //     ),
-      //   ],
-      // ),
-      body: EquationPainter(
-        showAxisLabel: true,
-        labelColor: Colors.white70,
-        equations: [
-          EquationConfig(
-            function: EquationParser.parse("x^2 + y^2 - 2500"),
-            color: Colors.indigoAccent,
-            strokeWidth: 4,
+
+      body: Column(
+        children: [
+          Column(
+            children: [
+              TextFormField(
+                controller: _controller,
+                onChanged: (value) {
+                  parseAndShow(value);
+                },
+                decoration: const InputDecoration(
+                  labelText: 'Enter equation (e.g. y = sin(x))',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _controllerMinX,
+                      onChanged: (value) => addLimitValues(),
+                      decoration: const InputDecoration(
+                        hint: Text('minX'),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: TextField(
+                      onChanged: (value) => addLimitValues(),
+                      controller: _controllerMaxX,
+                      decoration: const InputDecoration(
+                        hint: Text('maxX'),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: TextField(
+                      onChanged: (value) => addLimitValues(),
+                      controller: _controllerMinY,
+                      decoration: const InputDecoration(
+                        hint: Text('minY'),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: TextField(
+                      onChanged: (value) => addLimitValues(),
+                      controller: _controllerMaxY,
+
+                      decoration: const InputDecoration(
+                        hint: Text('maxY'),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          EquationConfig(
-            inequality: InequalityType.none,
-            // maxX: 100,
-            // minX: -100,
-            function: EquationParser.parse("40*cos(x/40) - y"),
-            color: Colors.pinkAccent,
-            strokeWidth: 13,
+          ElevatedButton(
+            onPressed: () => parseAndShow(_controller.text),
+            child: Text("Show"),
+          ),
+
+          Expanded(
+            child: EquationPainter(
+              equations: [
+                EquationConfig(
+                  maxX: maxX,
+                  minX: minX,
+                  maxY: maxY,
+                  minY: minY,
+                  inequality: _inequalityType,
+                  function: function,
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
-
-  // Widget _buildExample() {
-  //   switch (_exampleIndex) {
-  //     case 0:
-  //       return _buildCartesianExample();
-  //     case 1:
-  //       return _buildPolarExample();
-  //     case 2:
-  //       return _buildInequalityExample();
-  //     default:
-  //       return const Center(child: Text('Example not found'));
-  //   }
-  // }
-
-  // Widget _buildCartesianExample() {
-  //   return EquationPainter(
-  //     key: const ValueKey('cartesian'),
-  //     unitsPerSquare: 10,
-  //     interactive: true,
-  //     showHint: false,
-  //     showGrid: true,
-  //     showAxis: true,
-  //     showAxisLabel: true,
-  //     labelColor: Colors.white70,
-  //     onPointTapped: (x, y, config) {
-  //       ScaffoldMessenger.of(context).hideCurrentSnackBar();
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(
-  //           content: Text(
-  //             'Tapped: (x: $x, y: $y) on equation with type: ${config.type}',
-  //           ),
-  //           duration: const Duration(seconds: 1),
-  //           behavior: SnackBarBehavior.floating,
-  //         ),
-  //       );
-  //     },
-  //     equations: [
-  //       EquationConfig(
-  //         function: (x, y) => x * x + y * y - 25,
-  //         color: Colors.indigoAccent,
-  //         strokeWidth: 4,
-  //       ),
-  //       EquationConfig(
-  //         inequality: InequalityType.none,
-  //         maxX: 100,
-  //         minX: -100,
-  //         function: (x, y) => sin(x) - y,
-  //         color: Colors.pinkAccent,
-  //         strokeWidth: 3,
-  //       ),
-  //     ],
-  //   );
-  // }
-
-  // Widget _buildPolarExample() {
-  //   return EquationPainter(
-  //     key: const ValueKey('polar'),
-  //     unitsPerSquare: 5,
-  //     interactive: true,
-  //     showGrid: true,
-  //     showAxis: true,
-
-  //     showAxisLabel: true,
-  //     labelColor: Colors.white70,
-  //     onPointTapped: (x, y, config) {
-  //       // final r = sqrt(x * x + y * y);
-  //       // final theta = atan2(y, x);
-
-  //       ScaffoldMessenger.of(context).hideCurrentSnackBar();
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(
-  //           content: Text('Polar: (r: , θ: rad)'),
-  //           duration: const Duration(seconds: 1),
-  //           behavior: SnackBarBehavior.floating,
-  //         ),
-  //       );
-  //     },
-  //     equations: [
-  //       EquationConfig(
-  //         inequality: InequalityType.lessThanOrEqual,
-  //         type: EquationType.polar,
-  //         function: (r, theta) => tan(theta) - 4 * cos(2 * 600 * r),
-  //         color: Colors.cyanAccent,
-  //         strokeWidth: 3,
-  //         animationType: AnimationType.radial,
-  //       ),
-  //     ],
-  //   );
-  // }
-
-  // Widget _buildInequalityExample() {
-  //   return EquationPainter(
-  //     key: const ValueKey('inequality'),
-  //     unitsPerSquare: 10,
-  //     interactive: false,
-  //     showGrid: true,
-  //     showAxis: true,
-  //     onPointTapped: (x, y, config) {
-  //       print(
-  //         'Tapped point: (x: $x, y: $y) on equation with inequality: ${config.inequality}',
-  //       );
-  //     },
-
-  //     showAxisLabel: true,
-  //     labelColor: Colors.white70,
-  //     equations: [
-  //       EquationConfig(
-  //         function: (x, y) => y - x,
-  //         inequality: InequalityType.greaterThanOrEqual,
-  //         color: Colors.greenAccent,
-  //         fillOpacity: 0.2,
-  //       ),
-  //       // EquationConfig(
-  //       //   function: (x, y) => 16 - (x * x + y * y),
-  //       //   inequality: InequalityType.greaterThanOrEqual,
-  //       //   color: Colors.orangeAccent,
-  //       //   fillOpacity: 0.3,
-  //       // ),
-  //       // EquationConfig(
-  //       //   function: (x, y) => x * x + y * y - 16,
-  //       //   color: Colors.orangeAccent,
-  //       //   strokeWidth: 2,
-  //       // ),
-  //     ],
-  //   );
-  // }
 }
