@@ -1,3 +1,8 @@
+## 0.1.0+4
+
+* Updated README with new logo and profile links.
+* Version bump for minor updates.
+
 ## 0.1.0+3
 
 * Added `EquationParser.parseOrNull` for safer equation parsing with error feedback.
